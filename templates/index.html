@@ -122,6 +122,54 @@
                                 <p class="text-sm text-gray-400">Image attached</p>
                             </div>
                         </div>
+                        
+                        <!-- Advanced Options Section -->
+                        <div class="mb-3">
+                            <div class="flex justify-between items-center mb-2">
+                                <button type="button" id="toggleAdvancedOptions" class="text-sm text-primary-400 hover:text-primary-300 flex items-center">
+                                    <i class="fas fa-cog mr-1"></i> 
+                                    <span>Advanced options</span>
+                                    <i class="fas fa-chevron-down ml-1" id="advancedOptionsIcon"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- Advanced Options Panel (Hidden by default) -->
+                            <div id="advancedOptionsPanel" class="bg-gray-700 rounded-md p-3 mb-3 hidden">
+                                <!-- Reasoning Effort Options -->
+                                <div class="mb-3">
+                                    <label class="block text-sm font-medium text-gray-300 mb-1">Reasoning Effort</label>
+                                    <div class="flex gap-2">
+                                        <label class="inline-flex items-center">
+                                            <input type="radio" name="reasoningEffort" value="low" class="text-primary-600 border-gray-600 bg-gray-800">
+                                            <span class="ml-1 text-sm">Low</span>
+                                        </label>
+                                        <label class="inline-flex items-center">
+                                            <input type="radio" name="reasoningEffort" value="medium" class="text-primary-600 border-gray-600 bg-gray-800" checked>
+                                            <span class="ml-1 text-sm">Medium</span>
+                                        </label>
+                                        <label class="inline-flex items-center">
+                                            <input type="radio" name="reasoningEffort" value="high" class="text-primary-600 border-gray-600 bg-gray-800">
+                                            <span class="ml-1 text-sm">High</span>
+                                        </label>
+                                    </div>
+                                    <div class="text-xs text-gray-400 mt-1">
+                                        Adjust reasoning effort to control the depth of model's reasoning
+                                    </div>
+                                </div>
+                                
+                                <!-- Developer Message Input -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-1">Developer Message</label>
+                                    <textarea id="developerMessageInput" rows="2" 
+                                        class="w-full bg-gray-800 border border-gray-600 rounded-md px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                        placeholder="Add developer-specific instructions (like system message)"></textarea>
+                                    <div class="text-xs text-gray-400 mt-1">
+                                        Instructions that influence the model's behavior and response style
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="flex">
                             <div class="flex items-center">
                                 <label for="imageUpload" class="cursor-pointer bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-l-md transition-colors">
