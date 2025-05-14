@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     // DOM elements
-    const welcomeModal = new bootstrap.Modal(document.getElementById('welcomeModal'));
+    const welcomeModal = document.getElementById('welcomeModal');
     const usernameForm = document.getElementById('usernameForm');
     const usernameInput = document.getElementById('usernameInput');
     const chatContainer = document.getElementById('chatContainer');
@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Theme preference
     const prefersDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     let currentTheme = localStorage.getItem('theme') || (prefersDarkMode ? 'dark' : 'light');
-    document.documentElement.setAttribute('data-bs-theme', currentTheme);
+    document.documentElement.classList.toggle('dark', currentTheme === 'dark');
     updateThemeIcon();
     
     // Initialize UI based on user state
@@ -46,15 +46,18 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (username && userId) {
             // User has a username and ID, show chat interface
-            chatContainer.classList.remove('d-none');
+            chatContainer.classList.remove('hidden');
             usernameDisplay.textContent = username;
             mobileUsernameDisplay.textContent = username;
+            
+            // Hide welcome modal
+            welcomeModal.classList.add('hidden');
             
             // Load messages from database
             loadMessagesFromDatabase();
         } else {
-            // New user, show welcome modal
-            welcomeModal.show();
+            // New user, make sure welcome modal is shown
+            welcomeModal.classList.remove('hidden');
         }
     }
     

@@ -1,132 +1,206 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Chat Application</title>
     
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
     
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                            950: '#082f49',
+                        },
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Custom styles -->
+    <style type="text/tailwindcss">
+        @layer base {
+            html, body {
+                height: 100%;
+                overflow: hidden;
+            }
+        }
+        
+        @layer components {
+            .message-user {
+                @apply bg-primary-600 text-white self-end rounded-2xl rounded-br-none;
+            }
+            
+            .message-ai {
+                @apply bg-gray-800 self-start rounded-2xl rounded-bl-none border border-gray-700;
+            }
+            
+            .btn-primary {
+                @apply bg-primary-600 hover:bg-primary-700 text-white py-2 px-4 rounded-md transition-colors;
+            }
+            
+            .btn-icon {
+                @apply flex items-center justify-center w-9 h-9 rounded-md transition-colors;
+            }
+            
+            /* Custom animations for typing indicator */
+            @keyframes typing {
+                0% { transform: translateY(0px); }
+                50% { transform: translateY(-5px); }
+                100% { transform: translateY(0px); }
+            }
+            
+            .typing-indicator span {
+                @apply inline-block h-2 w-2 bg-gray-400 rounded-full mr-1;
+                animation: typing 1.4s infinite ease-in-out;
+            }
+            
+            .typing-indicator span:nth-child(1) {
+                animation-delay: 0s;
+            }
+            
+            .typing-indicator span:nth-child(2) {
+                animation-delay: 0.2s;
+            }
+            
+            .typing-indicator span:nth-child(3) {
+                animation-delay: 0.4s;
+                @apply mr-0;
+            }
+        }
+    </style>
     
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body>
-    <!-- Welcome Modal -->
-    <div class="modal fade" id="welcomeModal" tabindex="-1" aria-labelledby="welcomeModalLabel" aria-hidden="true" data-bs-backdrop="static">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="welcomeModalLabel">Welcome to AI Chat</h5>
+<body class="bg-gray-900 text-gray-200">
+    <!-- Welcome Modal (Fixed Overlay) -->
+    <div id="welcomeModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div class="border-b border-gray-700 p-4">
+                <h5 class="text-xl font-semibold" id="welcomeModalLabel">Welcome to AI Chat</h5>
+            </div>
+            <div class="p-6">
+                <div class="mb-4 text-center">
+                    <img src="https://pixabay.com/get/g1af56be6d6e2ddd7c829daeff9345364e94f903184680a61691722c18d5dfc615f79911f13124856102fa80bb62153b848daf6f4efef2ecbe4ba0293f33d98f3_1280.jpg" 
+                         alt="AI Chat Welcome" class="rounded-lg mx-auto max-h-48 object-cover">
                 </div>
-                <div class="modal-body">
-                    <div class="welcome-image-container mb-3 text-center">
-                        <img src="https://pixabay.com/get/g1af56be6d6e2ddd7c829daeff9345364e94f903184680a61691722c18d5dfc615f79911f13124856102fa80bb62153b848daf6f4efef2ecbe4ba0293f33d98f3_1280.jpg" 
-                             alt="AI Chat Welcome" class="welcome-image img-fluid rounded">
+                <p class="mb-4">Please enter your username to get started:</p>
+                <form id="usernameForm">
+                    <div class="mb-4">
+                        <input type="text" class="w-full bg-gray-700 border border-gray-600 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500" 
+                               id="usernameInput" placeholder="Enter username" required>
                     </div>
-                    <p>Please enter your username to get started:</p>
-                    <form id="usernameForm">
-                        <div class="mb-3">
-                            <input type="text" class="form-control" id="usernameInput" placeholder="Enter username" required>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100">Start Chatting</button>
-                    </form>
-                </div>
+                    <button type="submit" class="btn-primary w-full flex items-center justify-center">
+                        Start Chatting
+                        <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
+                </form>
             </div>
         </div>
     </div>
 
     <!-- Main Chat Interface -->
-    <div class="container-fluid h-100 d-none" id="chatContainer">
-        <div class="row h-100">
-            <!-- Sidebar -->
-            <div class="col-md-3 sidebar p-0 d-none d-md-block">
-                <div class="sidebar-header p-3 d-flex justify-content-between align-items-center">
-                    <h4>AI Chat</h4>
-                    <div class="d-flex">
-                        <button class="btn btn-sm btn-outline-danger me-2" id="clearChatBtn" title="Clear Chat History">
+    <div class="h-full hidden" id="chatContainer">
+        <div class="flex h-full">
+            <!-- Sidebar (Desktop) -->
+            <div class="hidden md:flex md:w-80 flex-col bg-gray-800 border-r border-gray-700">
+                <div class="p-4 border-b border-gray-700 flex items-center justify-between">
+                    <h4 class="text-xl font-semibold">AI Chat</h4>
+                    <div class="flex">
+                        <button class="btn-icon bg-red-900 hover:bg-red-800 text-red-100 mr-2" id="clearChatBtn" title="Clear Chat History">
                             <i class="fas fa-trash"></i>
                         </button>
                         <div class="theme-toggle">
-                            <button class="btn btn-sm btn-outline-secondary" id="themeToggleBtn">
+                            <button class="btn-icon bg-gray-700 hover:bg-gray-600" id="themeToggleBtn">
                                 <i class="fas fa-moon"></i>
                             </button>
                         </div>
                     </div>
                 </div>
-                <div class="user-info p-3 border-top border-bottom">
-                    <div class="d-flex align-items-center">
-                        <div class="user-avatar me-2">
-                            <i class="fas fa-user-circle fa-2x"></i>
+                <div class="p-4 border-b border-gray-700">
+                    <div class="flex items-center">
+                        <div class="mr-3 text-primary-400">
+                            <i class="fas fa-user-circle text-3xl"></i>
                         </div>
                         <div>
-                            <p class="mb-0" id="usernameDisplay">Username</p>
+                            <p class="font-medium" id="usernameDisplay">Username</p>
                         </div>
                     </div>
                 </div>
-                <div class="p-3">
-                    <h6>About</h6>
-                    <p class="small">This is an AI chat application powered by Azure OpenAI. Ask any question to get started!</p>
-                    <div class="sidebar-image mt-3">
+                <div class="p-4">
+                    <h6 class="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-2">About</h6>
+                    <p class="text-sm text-gray-400">This is an AI chat application powered by Azure OpenAI. Ask any question to get started!</p>
+                    <div class="mt-4">
                         <img src="https://pixabay.com/get/g35392b60d9765179ea686aa32359b18484920526f7261b2c3a63e93245c4f0c45c82b2009db77a552f0e8188ee16a26e7293923a472c2d4d50a73be928076d2a_1280.jpg" 
-                             alt="AI Conversation" class="img-fluid rounded">
+                             alt="AI Conversation" class="rounded-lg w-full object-cover h-32">
                     </div>
                 </div>
             </div>
             
             <!-- Chat Area -->
-            <div class="col-12 col-md-9 chat-area d-flex flex-column p-0">
+            <div class="flex-1 flex flex-col">
                 <!-- Mobile Header -->
-                <div class="chat-header p-3 d-flex d-md-none justify-content-between align-items-center">
-                    <h4>AI Chat</h4>
-                    <div class="d-flex">
-                        <button class="btn btn-sm btn-outline-danger me-2" id="mobileClearChatBtn" title="Clear Chat History">
+                <div class="md:hidden p-4 border-b border-gray-700 flex items-center justify-between bg-gray-800">
+                    <h4 class="text-xl font-semibold">AI Chat</h4>
+                    <div class="flex items-center">
+                        <button class="btn-icon bg-red-900 hover:bg-red-800 text-red-100 mr-2" id="mobileClearChatBtn" title="Clear Chat History">
                             <i class="fas fa-trash"></i>
                         </button>
-                        <div class="theme-toggle me-2">
-                            <button class="btn btn-sm btn-outline-secondary" id="mobilethemeToggleBtn">
+                        <div class="theme-toggle mr-2">
+                            <button class="btn-icon bg-gray-700 hover:bg-gray-600" id="mobilethemeToggleBtn">
                                 <i class="fas fa-moon"></i>
                             </button>
                         </div>
-                        <div class="user-info-mobile">
-                            <i class="fas fa-user-circle"></i>
-                            <span id="mobileUsernameDisplay">Username</span>
+                        <div class="flex items-center text-primary-400">
+                            <i class="fas fa-user-circle mr-1"></i>
+                            <span id="mobileUsernameDisplay" class="font-medium">Username</span>
                         </div>
                     </div>
                 </div>
                 
                 <!-- Conversation Area -->
-                <div class="conversation-container flex-grow-1 p-3" id="conversationContainer">
-                    <div class="welcome-message text-center py-5">
+                <div class="flex-1 overflow-y-auto p-4" id="conversationContainer">
+                    <div class="welcome-message text-center py-10">
                         <img src="https://pixabay.com/get/gbd3612108892163eb985b96454d9e7dd4e0a476496213b135a79d43542de268fbea92a84dae5a33f957315fe1ab99f93c82f8c0475183d19c22707264bb16354_1280.jpg" 
-                             alt="Welcome to chat" class="welcome-chat-image img-fluid rounded mb-4" style="max-width: 250px;">
-                        <h5>Welcome to AI Chat!</h5>
-                        <p>Ask me anything to get started.</p>
+                             alt="Welcome to chat" class="mx-auto rounded-lg mb-6 max-w-[200px]">
+                        <h5 class="text-xl font-semibold mb-2">Welcome to AI Chat!</h5>
+                        <p class="text-gray-400">Ask me anything to get started.</p>
                     </div>
                     <!-- Messages will be added here dynamically -->
                 </div>
                 
                 <!-- Message Input -->
-                <div class="message-input-container p-3 border-top">
-                    <form id="messageForm">
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="messageInput" placeholder="Type your message..." required>
-                            <button class="btn btn-primary" type="submit" id="sendButton">
-                                <i class="fas fa-paper-plane"></i>
-                            </button>
-                        </div>
+                <div class="border-t border-gray-700 p-4 bg-gray-800">
+                    <form id="messageForm" class="flex">
+                        <input type="text" class="flex-1 bg-gray-700 border border-gray-600 rounded-l-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500" 
+                               id="messageInput" placeholder="Type your message..." required>
+                        <button class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-r-md transition-colors" type="submit" id="sendButton">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
                     </form>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Bootstrap JS and dependencies -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
     <!-- Custom JS -->
     <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
 </body>
