@@ -58,14 +58,40 @@ document.addEventListener('DOMContentLoaded', function() {
         username = usernameInput.value.trim();
         
         if (username) {
-            // Save username
-            localStorage.setItem('username', username);
-            usernameDisplay.textContent = username;
-            mobileUsernameDisplay.textContent = username;
-            
-            // Hide modal and show chat
-            welcomeModal.hide();
-            chatContainer.classList.remove('d-none');
+            // Register/login user with the backend
+            fetch('/api/users', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username: username
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Save user data
+                    localStorage.setItem('username', username);
+                    localStorage.setItem('user_id', data.user_id);
+                    usernameDisplay.textContent = username;
+                    mobileUsernameDisplay.textContent = username;
+                    
+                    // Hide modal and show chat
+                    welcomeModal.hide();
+                    chatContainer.classList.remove('d-none');
+                    
+                    // Load message history from the database
+                    loadMessagesFromDatabase();
+                } else {
+                    // Show error
+                    alert('Error: ' + (data.message || 'Failed to register user'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Network error: Could not connect to the server.');
+            });
         }
     }
     
