@@ -11,11 +11,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const mobileUsernameDisplay = document.getElementById('mobileUsernameDisplay');
     const themeToggleBtn = document.getElementById('themeToggleBtn');
     const mobileThemeToggleBtn = document.getElementById('mobilethemeToggleBtn');
+    const imageUploadInput = document.getElementById('imageUpload');
+    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+    const imagePreview = document.getElementById('imagePreview');
+    const removeImageBtn = document.getElementById('removeImageBtn');
     
     // State variables
     let username = localStorage.getItem('username');
     let conversation = JSON.parse(localStorage.getItem('conversation') || '[]');
     let isWaitingForResponse = false;
+    let imageData = null; // For storing base64 encoded image data
     
     // Theme preference
     const prefersDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -37,6 +42,8 @@ document.addEventListener('DOMContentLoaded', function() {
     mobileThemeToggleBtn.addEventListener('click', toggleTheme);
     clearChatBtn.addEventListener('click', clearChat);
     mobileClearChatBtn.addEventListener('click', clearChat);
+    imageUploadInput.addEventListener('change', handleImageUpload);
+    removeImageBtn.addEventListener('click', clearImageUpload);
     
     /**
      * Initialize the UI based on whether the user has a username
@@ -252,9 +259,23 @@ document.addEventListener('DOMContentLoaded', function() {
     
     /**
      * Add a message to the conversation history
+     * @param {string} role - 'user' or 'assistant'
+     * @param {string} content - Message text content
+     * @param {string|null} imageData - Base64 encoded image data (optional)
      */
-    function addToConversation(role, content) {
-        conversation.push({ role, content, timestamp: new Date().toISOString() });
+    function addToConversation(role, content, imageData = null) {
+        const messageObj = { 
+            role, 
+            content, 
+            timestamp: new Date().toISOString() 
+        };
+        
+        // Only add image data if it exists (to save space in localStorage)
+        if (imageData) {
+            messageObj.image_data = imageData;
+        }
+        
+        conversation.push(messageObj);
         saveConversation();
     }
     
@@ -295,12 +316,58 @@ document.addEventListener('DOMContentLoaded', function() {
                         
                         // Add messages to UI and update local conversation
                         data.messages.forEach(msg => {
-                            addMessageToUI(msg.role, msg.content);
-                            conversation.push({
-                                role: msg.role,
-                                content: msg.content,
-                                timestamp: msg.timestamp
-                            });
+                            // Check if message has image data from the database
+                            const hasImage = msg.has_image || false;
+                            
+                            // If message has image, we need to fetch it separately
+                            if (hasImage) {
+                                // We'll fetch the image data and then display the message
+                                fetch(`/api/messages/${msg.id}/image?user_id=${userId}`)
+                                    .then(response => response.json())
+                                    .then(imageData => {
+                                        if (imageData.status === 'success') {
+                                            // Add message with image to UI
+                                            addMessageToUI(msg.role, msg.content, imageData.image_data);
+                                            
+                                            // Add to conversation history with image
+                                            conversation.push({
+                                                role: msg.role,
+                                                content: msg.content,
+                                                image_data: imageData.image_data,
+                                                timestamp: msg.timestamp
+                                            });
+                                            
+                                            // Save updated conversation
+                                            saveConversation();
+                                        } else {
+                                            // If image fetch fails, just show the message without image
+                                            addMessageToUI(msg.role, msg.content);
+                                            conversation.push({
+                                                role: msg.role,
+                                                content: msg.content,
+                                                timestamp: msg.timestamp
+                                            });
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error fetching image data:', error);
+                                        // Still show message without image
+                                        addMessageToUI(msg.role, msg.content);
+                                        conversation.push({
+                                            role: msg.role,
+                                            content: msg.content,
+                                            timestamp: msg.timestamp
+                                        });
+                                    });
+                            } else {
+                                // Regular message without image
+                                addMessageToUI(msg.role, msg.content);
+                                conversation.push({
+                                    role: msg.role,
+                                    content: msg.content,
+                                    timestamp: msg.timestamp
+                                });
+                            }
                         });
                         
                         // Save to localStorage as backup
@@ -343,49 +410,139 @@ document.addEventListener('DOMContentLoaded', function() {
     
     /**
      * Get AI response from the backend
+     * @param {string} message - The user's message text
+     * @param {string|null} imageData - Optional base64 encoded image data
+     * @param {boolean} useStreaming - Whether to use streaming for the response
      */
-    function getAIResponse(message) {
+    function getAIResponse(message, imageData = null, useStreaming = false) {
         const userId = localStorage.getItem('user_id');
         
-        fetch('/api/chat', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                message: message,
-                username: username,
-                user_id: userId,
-                conversation_history: conversation
-            }),
-        })
-        .then(response => response.json())
-        .then(data => {
-            // Hide typing indicator
-            hideTypingIndicator();
+        // Hide any existing typing indicators
+        hideTypingIndicator();
+        
+        // Hide welcome message if visible
+        const welcomeMessage = document.querySelector('.welcome-message');
+        if (welcomeMessage) {
+            welcomeMessage.style.display = 'none';
+        }
+        
+        if (useStreaming) {
+            // For streaming, we use server-sent events
+            // Add an empty assistant message with streaming indicator
+            addMessageToUI('assistant', '', null, true);
             
-            // Hide welcome message if visible
-            const welcomeMessage = document.querySelector('.welcome-message');
-            if (welcomeMessage) {
-                welcomeMessage.style.display = 'none';
-            }
+            // Create new EventSource connection
+            const eventSource = new EventSource(`/api/chat?user_id=${userId}`);
             
-            if (data.status === 'success') {
-                // Add AI response to UI
-                addMessageToUI('assistant', data.response);
+            // Create fetch request to start streaming
+            fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: message,
+                    username: username,
+                    user_id: userId,
+                    image_data: imageData,
+                    conversation_history: conversation,
+                    streaming: true
+                }),
+            }).catch(error => {
+                eventSource.close();
+                hideTypingIndicator();
+                showError('Error starting streaming response: ' + error.message);
+                console.error('Streaming error:', error);
+                isWaitingForResponse = false;
+            });
+            
+            let fullResponse = '';
+            let streamingMessageElement = document.getElementById('streaming-message');
+            
+            // Handle incoming message chunks
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
                 
-                // Add to conversation history (local backup)
-                addToConversation('assistant', data.response);
-            } else {
-                // Show error
-                showError(data.message || 'An error occurred while getting a response.');
-            }
-        })
-        .catch(error => {
-            hideTypingIndicator();
-            showError('Network error: Could not connect to the server.');
-            console.error('Error:', error);
-        });
+                if (data.chunk) {
+                    fullResponse += data.chunk;
+                    
+                    // Update the streaming message with the latest content
+                    if (streamingMessageElement) {
+                        const messageContent = streamingMessageElement.querySelector('.message-content');
+                        if (messageContent) {
+                            messageContent.innerHTML = formatMessageContent(fullResponse);
+                            scrollToBottom();
+                        }
+                    }
+                }
+                
+                // Check if this is the final message
+                if (data.is_final) {
+                    eventSource.close();
+                    isWaitingForResponse = false;
+                    
+                    // Replace the streaming message with a final one
+                    if (streamingMessageElement) {
+                        streamingMessageElement.removeAttribute('id');
+                        const typingIndicator = streamingMessageElement.querySelector('.typing-indicator');
+                        if (typingIndicator) {
+                            typingIndicator.remove();
+                        }
+                    }
+                    
+                    // Add to conversation history
+                    addToConversation('assistant', fullResponse);
+                }
+            };
+            
+            // Handle errors
+            eventSource.onerror = function(error) {
+                console.error('EventSource error:', error);
+                eventSource.close();
+                hideTypingIndicator();
+                showError('Connection error: Streaming response failed');
+                isWaitingForResponse = false;
+            };
+        } else {
+            // For non-streaming responses, use regular fetch
+            fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: message,
+                    username: username,
+                    user_id: userId,
+                    image_data: imageData,
+                    conversation_history: conversation,
+                    streaming: false
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideTypingIndicator();
+                
+                if (data.status === 'success') {
+                    // Add AI response to UI
+                    addMessageToUI('assistant', data.response);
+                    
+                    // Add to conversation history
+                    addToConversation('assistant', data.response);
+                } else {
+                    // Show error
+                    showError(data.message || 'An error occurred while getting a response.');
+                }
+                
+                isWaitingForResponse = false;
+            })
+            .catch(error => {
+                hideTypingIndicator();
+                showError('Network error: Could not connect to the server.');
+                console.error('Error:', error);
+                isWaitingForResponse = false;
+            });
+        }
     }
     
     /**
@@ -437,6 +594,70 @@ document.addEventListener('DOMContentLoaded', function() {
                 icon.className = 'fas fa-moon';
             }
         });
+    }
+    
+    /**
+     * Handle image upload
+     */
+    function handleImageUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        // Check file type
+        if (!file.type.match('image.*')) {
+            alert('Please select an image file.');
+            return;
+        }
+        
+        // Check file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Image size must be less than 5MB.');
+            return;
+        }
+        
+        // Create FormData
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        // Show loading state
+        imagePreviewContainer.style.display = 'flex';
+        imagePreview.src = '';
+        imagePreview.alt = 'Loading...';
+        
+        // Upload image to server
+        fetch('/api/upload-image', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Store image data and show preview
+                imageData = data.image_data;
+                imagePreview.src = `data:image/jpeg;base64,${imageData}`;
+                imagePreview.alt = 'Image Preview';
+                imagePreviewContainer.style.display = 'flex';
+            } else {
+                // Show error
+                alert('Error uploading image: ' + (data.message || 'Unknown error'));
+                clearImageUpload();
+            }
+        })
+        .catch(error => {
+            console.error('Error uploading image:', error);
+            alert('Network error: Could not upload image.');
+            clearImageUpload();
+        });
+    }
+    
+    /**
+     * Clear image upload and preview
+     */
+    function clearImageUpload() {
+        imageData = null;
+        imageUploadInput.value = '';
+        imagePreviewContainer.style.display = 'none';
+        imagePreview.src = '#';
     }
     
     /**

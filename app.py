@@ -293,6 +293,47 @@ def get_messages():
             'message': f"An error occurred: {str(e)}"
         }), 500
         
+@app.route('/api/messages/<int:message_id>/image', methods=['GET'])
+def get_message_image(message_id):
+    """Get image data for a specific message."""
+    try:
+        from models import Message
+        user_id = request.args.get('user_id')
+        
+        if not user_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'User ID is required'
+            }), 400
+        
+        # Get the message and verify it belongs to the user
+        message = Message.query.filter_by(id=message_id, user_id=user_id).first()
+        
+        if not message:
+            return jsonify({
+                'status': 'error',
+                'message': 'Message not found or does not belong to this user'
+            }), 404
+        
+        # Check if message has image data
+        if not message.image_data:
+            return jsonify({
+                'status': 'error',
+                'message': 'This message does not have an image'
+            }), 404
+        
+        # Return the image data
+        return jsonify({
+            'status': 'success',
+            'image_data': message.image_data
+        })
+    except Exception as e:
+        logging.error(f"Error in get_message_image endpoint: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': f"An error occurred: {str(e)}"
+        }), 500
+        
 @app.route('/api/messages/clear', methods=['POST'])
 def clear_messages():
     """Clear all messages for a user."""
