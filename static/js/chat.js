@@ -136,6 +136,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const message = messageInput.value.trim();
         const hasImage = imageData ? true : false;
         
+        // Get advanced options values
+        const reasoningEffort = getSelectedReasoningEffort();
+        const developerMessage = developerMessageInput.value.trim();
+        
         if (message || hasImage) {
             // Add user message to UI (with image if present)
             addMessageToUI('user', message, hasImage ? imageData : null);
@@ -154,7 +158,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Get AI response with streaming option
             const useStreaming = true; // Enable streaming for better UX
-            getAIResponse(message, imageData, useStreaming);
+            getAIResponse(message, imageData, useStreaming, reasoningEffort, developerMessage);
         }
     }
     
@@ -423,8 +427,10 @@ document.addEventListener('DOMContentLoaded', function() {
      * @param {string} message - The user's message text
      * @param {string|null} imageData - Optional base64 encoded image data
      * @param {boolean} useStreaming - Whether to use streaming for the response
+     * @param {string|null} reasoningEffort - Optional reasoning effort level (low, medium, high)
+     * @param {string|null} developerMessage - Optional developer message (like system message)
      */
-    function getAIResponse(message, imageData = null, useStreaming = false) {
+    function getAIResponse(message, imageData = null, useStreaming = false, reasoningEffort = null, developerMessage = null) {
         const userId = localStorage.getItem('user_id');
         
         // Hide any existing typing indicators
@@ -604,6 +610,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 icon.className = 'fas fa-moon';
             }
         });
+    }
+    
+    /**
+     * Toggle the advanced options panel
+     */
+    function toggleAdvancedOptions() {
+        showAdvancedOptions = !showAdvancedOptions;
+        
+        if (showAdvancedOptions) {
+            advancedOptionsPanel.classList.remove('hidden');
+            advancedOptionsIcon.classList.remove('fa-chevron-down');
+            advancedOptionsIcon.classList.add('fa-chevron-up');
+        } else {
+            advancedOptionsPanel.classList.add('hidden');
+            advancedOptionsIcon.classList.remove('fa-chevron-up');
+            advancedOptionsIcon.classList.add('fa-chevron-down');
+        }
+    }
+    
+    /**
+     * Get the selected reasoning effort value
+     */
+    function getSelectedReasoningEffort() {
+        for (const radio of reasoningEffortRadios) {
+            if (radio.checked) {
+                return radio.value;
+            }
+        }
+        return 'medium'; // Default to medium if nothing selected
     }
     
     /**
