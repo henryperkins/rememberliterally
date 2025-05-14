@@ -7,6 +7,18 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, current_user, login_user, logout_user, login_required
 from utils.openai_helper import generate_ai_response
 
+# Flag to indicate if the database is available
+database_status = {'available': True}
+
+def is_database_available():
+    """Check if the database is available."""
+    return database_status['available']
+
+def set_database_unavailable():
+    """Mark the database as unavailable."""
+    database_status['available'] = False
+    logging.warning("Running without database support - using in-memory storage instead")
+
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 
@@ -21,10 +33,19 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "default-secret-key-for-development")
 
 # Configure database
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+database_url = os.environ.get("DATABASE_URL")
+# Ensure proper URL format for SQLAlchemy
+if database_url and database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+app.config["SQLALCHEMY_DATABASE_URI"] = database_url
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
     "pool_pre_ping": True,
+    "connect_args": {
+        "connect_timeout": 10,
+        "application_name": "ai-chat-app"
+    }
 }
 
 # Initialize database
@@ -38,7 +59,13 @@ login_manager.login_view = 'index'
 # Create all tables
 with app.app_context():
     import models  # Import models here to avoid circular imports
-    db.create_all()
+    try:
+        db.create_all()
+        logging.info("Database tables created successfully")
+    except Exception as e:
+        logging.error(f"Error creating database tables: {str(e)}")
+        # Mark database as unavailable
+        set_database_unavailable()
 
 @login_manager.user_loader
 def load_user(id):
@@ -54,7 +81,6 @@ def index():
 def register_user():
     """Register a new user or login an existing user by username."""
     try:
-        from models import User
         data = request.json
         username = data.get('username', '').strip()
         
@@ -64,24 +90,40 @@ def register_user():
                 'message': 'Username is required'
             }), 400
         
-        # Check if user exists
-        user = User.query.filter_by(username=username).first()
-        
-        # If user doesn't exist, create a new one
-        if not user:
-            user = User(username=username)
-            db.session.add(user)
-            db.session.commit()
-            logging.debug(f"Created new user: {username}")
-        
-        # Login the user
-        login_user(user)
-        
-        return jsonify({
-            'status': 'success',
-            'user_id': user.id,
-            'username': user.username
-        })
+        if is_database_available():
+            # Database storage path
+            from models import User
+            
+            # Check if user exists
+            user = User.query.filter_by(username=username).first()
+            
+            # If user doesn't exist, create a new one
+            if not user:
+                user = User(username=username)
+                db.session.add(user)
+                db.session.commit()
+                logging.debug(f"Created new user: {username}")
+            
+            # Login the user
+            login_user(user)
+            
+            return jsonify({
+                'status': 'success',
+                'user_id': user.id,
+                'username': user.username
+            })
+        else:
+            # Fallback storage path
+            from utils.db_fallback import register_user as fallback_register_user
+            
+            # Register user in memory
+            user = fallback_register_user(username)
+            
+            return jsonify({
+                'status': 'success',
+                'user_id': user['id'],
+                'username': user['username']
+            })
     except Exception as e:
         logging.error(f"Error in register_user endpoint: {str(e)}")
         return jsonify({
