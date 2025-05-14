@@ -19,13 +19,27 @@ class Message(db.Model):
     role = db.Column(db.String(20), nullable=False)  # 'user' or 'assistant'
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    # Add image data field (storing as Base64 string)
+    image_data = db.Column(db.Text, nullable=True)
+    # Is this message being streamed?
+    is_streaming = db.Column(db.Boolean, default=False)
     
     def to_dict(self):
         """Convert message to dictionary format for API responses."""
-        return {
+        message_dict = {
             'id': self.id,
             'content': self.content,
             'role': self.role,
             'timestamp': self.timestamp.isoformat(),
-            'user_id': self.user_id
+            'user_id': self.user_id,
+            'is_streaming': self.is_streaming
         }
+        
+        # Include image data if present
+        if self.image_data:
+            message_dict['has_image'] = True
+            # Note: We don't include the actual image data in the dict to keep response size small
+        else:
+            message_dict['has_image'] = False
+            
+        return message_dict

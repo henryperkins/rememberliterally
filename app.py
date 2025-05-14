@@ -136,9 +136,14 @@ def chat():
     """Process chat messages and get AI responses."""
     try:
         from models import Message
+        from utils.openai_helper import generate_ai_response, stream_ai_response
+        from flask import Response
+        
         data = request.json
         message_content = data.get('message', '')
         conversation_history = data.get('conversation_history', [])
+        image_data = data.get('image_data')  # Base64 encoded image data
+        use_streaming = data.get('streaming', False)  # Whether to use streaming response
         
         # Check if user is logged in via session
         user_id = data.get('user_id')
@@ -147,36 +152,112 @@ def chat():
         # Log the incoming request
         logging.debug(f"Received message from {username}: {message_content}")
         logging.debug(f"Conversation history length: {len(conversation_history)}")
+        if image_data:
+            logging.debug("Image data included with message")
         
         # Store user message in database if user_id is provided
         if user_id:
             user_message = Message(
                 content=message_content,
                 role='user',
-                user_id=user_id
+                user_id=user_id,
+                image_data=image_data
             )
             db.session.add(user_message)
             db.session.commit()
         
-        # Generate AI response
-        ai_response = generate_ai_response(message_content, conversation_history)
+        # Handle streaming or regular response
+        if use_streaming:
+            def generate():
+                # Create an initial streaming message in the database
+                ai_message = None
+                if user_id:
+                    ai_message = Message(
+                        content="",
+                        role='assistant',
+                        user_id=user_id,
+                        is_streaming=True
+                    )
+                    db.session.add(ai_message)
+                    db.session.commit()
+                    message_id = ai_message.id
+                
+                # Start streaming the response
+                full_response = ""
+                for chunk in stream_ai_response(message_content, conversation_history, image_data):
+                    full_response += chunk
+                    # Update the streaming message in the database
+                    if user_id and ai_message:
+                        ai_message.content = full_response
+                        db.session.commit()
+                    # Send the chunk to the client
+                    yield f"data: {json.dumps({'chunk': chunk, 'is_final': False})}\n\n"
+                
+                # Update the final message in the database and mark as no longer streaming
+                if user_id and ai_message:
+                    ai_message.is_streaming = False
+                    db.session.commit()
+                
+                # Send the final chunk to the client
+                yield f"data: {json.dumps({'chunk': '', 'is_final': True, 'full_response': full_response})}\n\n"
+            
+            return Response(generate(), mimetype='text/event-stream')
+        else:
+            # Generate regular AI response
+            ai_response = generate_ai_response(message_content, conversation_history, image_data)
+            
+            # Store AI response in database if user_id is provided
+            if user_id:
+                ai_message = Message(
+                    content=ai_response,
+                    role='assistant',
+                    user_id=user_id
+                )
+                db.session.add(ai_message)
+                db.session.commit()
+            
+            # Return the response
+            return jsonify({
+                'status': 'success',
+                'response': ai_response
+            })
+    except Exception as e:
+        logging.error(f"Error in chat endpoint: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': f"An error occurred: {str(e)}"
+        }), 500
         
-        # Store AI response in database if user_id is provided
-        if user_id:
-            ai_message = Message(
-                content=ai_response,
-                role='assistant',
-                user_id=user_id
-            )
-            db.session.add(ai_message)
-            db.session.commit()
+@app.route('/api/upload-image', methods=['POST'])
+def upload_image():
+    """Handle image uploads for chat"""
+    try:
+        if 'image' not in request.files:
+            return jsonify({
+                'status': 'error',
+                'message': 'No image file provided'
+            }), 400
+            
+        image_file = request.files['image']
+        
+        if image_file.filename == '':
+            return jsonify({
+                'status': 'error',
+                'message': 'No image selected'
+            }), 400
+            
+        # Read and encode the image as base64
+        image_data = image_file.read()
+        import base64
+        encoded_image = base64.b64encode(image_data).decode('utf-8')
         
         return jsonify({
             'status': 'success',
-            'response': ai_response
+            'image_data': encoded_image
         })
+        
     except Exception as e:
-        logging.error(f"Error in chat endpoint: {str(e)}")
+        logging.error(f"Error in image upload: {str(e)}")
         return jsonify({
             'status': 'error',
             'message': f"An error occurred: {str(e)}"
