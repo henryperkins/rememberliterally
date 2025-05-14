@@ -169,6 +169,37 @@ def get_messages():
             'status': 'error',
             'message': f"An error occurred: {str(e)}"
         }), 500
+        
+@app.route('/api/messages/clear', methods=['POST'])
+def clear_messages():
+    """Clear all messages for a user."""
+    try:
+        from models import Message
+        data = request.json
+        user_id = data.get('user_id')
+        
+        if not user_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'User ID is required'
+            }), 400
+        
+        # Delete all messages for the user
+        Message.query.filter_by(user_id=user_id).delete()
+        db.session.commit()
+        
+        logging.debug(f"Cleared messages for user ID: {user_id}")
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'All messages cleared successfully'
+        })
+    except Exception as e:
+        logging.error(f"Error in clear_messages endpoint: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': f"An error occurred: {str(e)}"
+        }), 500
 
 # Error handlers
 @app.errorhandler(404)
