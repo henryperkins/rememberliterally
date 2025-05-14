@@ -117,42 +117,90 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         const message = messageInput.value.trim();
+        const hasImage = imageData ? true : false;
         
-        if (message) {
-            // Add user message to UI
-            addMessageToUI('user', message);
+        if (message || hasImage) {
+            // Add user message to UI (with image if present)
+            addMessageToUI('user', message, hasImage ? imageData : null);
             
-            // Clear input
+            // Clear input and image preview
             messageInput.value = '';
+            if (hasImage) {
+                clearImageUpload();
+            }
             
             // Add to conversation history
-            addToConversation('user', message);
+            addToConversation('user', message, hasImage ? imageData : null);
             
             // Show typing indicator
             showTypingIndicator();
             
-            // Get AI response
-            getAIResponse(message);
+            // Get AI response with streaming option
+            const useStreaming = true; // Enable streaming for better UX
+            getAIResponse(message, imageData, useStreaming);
         }
     }
     
     /**
      * Add a message to the UI
+     * @param {string} role - 'user' or 'assistant'
+     * @param {string} content - Message text content
+     * @param {string|null} imageData - Base64 encoded image data (optional)
+     * @param {boolean} isStreaming - Whether this message is streaming (optional)
      */
-    function addMessageToUI(role, content) {
+    function addMessageToUI(role, content, imageData = null, isStreaming = false) {
         const messageDiv = document.createElement('div');
         const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         
+        // Set an ID for streaming messages so we can update them later
+        if (isStreaming) {
+            messageDiv.id = 'streaming-message';
+        }
+        
         messageDiv.className = 'flex flex-col mb-4 ' + (role === 'user' ? 'items-end' : 'items-start');
+        
+        // Prepare image HTML if image is present
+        let imageHtml = '';
+        if (imageData) {
+            imageHtml = `
+                <div class="message-image mb-2">
+                    <img src="data:image/jpeg;base64,${imageData}" alt="User uploaded image" 
+                         class="rounded-md max-w-full max-h-60 object-cover">
+                </div>
+            `;
+        }
+        
+        // Add typing indicator for streaming messages
+        let typingIndicator = '';
+        if (isStreaming) {
+            typingIndicator = `
+                <div class="typing-indicator">
+                    <span></span><span></span><span></span>
+                </div>
+            `;
+        }
         
         messageDiv.innerHTML = `
             <div class="message message-${role === 'user' ? 'user' : 'ai'} px-4 py-3 max-w-[80%]">
-                <div class="message-content">${formatMessageContent(content)}</div>
+                ${imageHtml}
+                <div class="message-content">${content ? formatMessageContent(content) : ''}</div>
+                ${isStreaming ? typingIndicator : ''}
+                <div class="text-xs text-gray-500 mt-1">${timestamp}</div>
             </div>
-            <div class="text-xs text-gray-500 mt-1">${timestamp}</div>
         `;
         
-        conversationContainer.appendChild(messageDiv);
+        // For streaming messages, replace existing streaming message if it exists
+        if (isStreaming) {
+            const existingStreamingMessage = document.getElementById('streaming-message');
+            if (existingStreamingMessage) {
+                conversationContainer.replaceChild(messageDiv, existingStreamingMessage);
+            } else {
+                conversationContainer.appendChild(messageDiv);
+            }
+        } else {
+            conversationContainer.appendChild(messageDiv);
+        }
+        
         scrollToBottom();
     }
     
