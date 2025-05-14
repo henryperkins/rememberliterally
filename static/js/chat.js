@@ -89,8 +89,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     mobileUsernameDisplay.textContent = username;
                     
                     // Hide modal and show chat
-                    welcomeModal.hide();
-                    chatContainer.classList.remove('d-none');
+                    welcomeModal.classList.add('hidden');
+                    chatContainer.classList.remove('hidden');
                     
                     // Load message history from the database
                     loadMessagesFromDatabase();
@@ -143,13 +143,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const messageDiv = document.createElement('div');
         const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         
-        messageDiv.className = 'd-flex flex-column ' + (role === 'user' ? 'align-items-end' : 'align-items-start');
+        messageDiv.className = 'flex flex-col mb-4 ' + (role === 'user' ? 'items-end' : 'items-start');
         
         messageDiv.innerHTML = `
-            <div class="message message-${role === 'user' ? 'user' : 'ai'}">
+            <div class="message message-${role === 'user' ? 'user' : 'ai'} px-4 py-3 max-w-[80%]">
                 <div class="message-content">${formatMessageContent(content)}</div>
             </div>
-            <div class="message-timestamp">${timestamp}</div>
+            <div class="text-xs text-gray-500 mt-1">${timestamp}</div>
         `;
         
         conversationContainer.appendChild(messageDiv);
@@ -174,11 +174,11 @@ document.addEventListener('DOMContentLoaded', function() {
         isWaitingForResponse = true;
         
         const typingDiv = document.createElement('div');
-        typingDiv.className = 'd-flex align-items-start';
+        typingDiv.className = 'flex items-start';
         typingDiv.id = 'typingIndicator';
         
         typingDiv.innerHTML = `
-            <div class="message message-ai">
+            <div class="message message-ai px-4 py-3">
                 <div class="typing-indicator">
                     <span></span>
                     <span></span>
@@ -345,7 +345,7 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function showError(errorMessage) {
         const errorDiv = document.createElement('div');
-        errorDiv.className = 'error-message';
+        errorDiv.className = 'bg-red-900/50 text-red-100 border border-red-700 rounded-md p-3 my-2 w-full text-center';
         errorDiv.textContent = errorMessage;
         
         conversationContainer.appendChild(errorDiv);
@@ -364,7 +364,7 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function toggleTheme() {
         currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-bs-theme', currentTheme);
+        document.documentElement.classList.toggle('dark', currentTheme === 'dark');
         localStorage.setItem('theme', currentTheme);
         updateThemeIcon();
     }
@@ -401,8 +401,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Show loading
         const loadingMessage = document.createElement('div');
-        loadingMessage.className = 'text-center my-3';
-        loadingMessage.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><p>Clearing chat history...</p>';
+        loadingMessage.className = 'text-center my-6';
+        loadingMessage.innerHTML = '<div class="inline-block w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" role="status"></div><p class="mt-2 text-gray-400">Clearing chat history...</p>';
         conversationContainer.innerHTML = '';
         conversationContainer.appendChild(loadingMessage);
         
@@ -428,12 +428,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Show welcome message
                 const welcomeMessage = document.createElement('div');
-                welcomeMessage.className = 'welcome-message text-center py-5';
+                welcomeMessage.className = 'welcome-message text-center py-10';
                 welcomeMessage.innerHTML = `
                     <img src="https://pixabay.com/get/gbd3612108892163eb985b96454d9e7dd4e0a476496213b135a79d43542de268fbea92a84dae5a33f957315fe1ab99f93c82f8c0475183d19c22707264bb16354_1280.jpg" 
-                         alt="Welcome to chat" class="welcome-chat-image img-fluid rounded mb-4" style="max-width: 250px;">
-                    <h5>Welcome to AI Chat!</h5>
-                    <p>Chat history has been cleared. Ask me anything to get started.</p>
+                         alt="Welcome to chat" class="mx-auto rounded-lg mb-6 max-w-[200px]">
+                    <h5 class="text-xl font-semibold mb-2">Welcome to AI Chat!</h5>
+                    <p class="text-gray-400">Chat history has been cleared. Ask me anything to get started.</p>
                 `;
                 conversationContainer.appendChild(welcomeMessage);
             } else {
