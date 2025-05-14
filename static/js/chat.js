@@ -364,9 +364,17 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function toggleTheme() {
         currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        
+        // Toggle the 'dark' class on the html element
         document.documentElement.classList.toggle('dark', currentTheme === 'dark');
+        
+        // Save theme preference to localStorage
         localStorage.setItem('theme', currentTheme);
+        
+        // Update UI
         updateThemeIcon();
+        
+        console.log('Theme toggled to:', currentTheme);
     }
     
     /**

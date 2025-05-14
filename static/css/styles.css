@@ -247,7 +247,43 @@
 
 /* Dark mode settings */
 .dark .dark\:bg-gray-800 { background-color: rgb(31, 41, 55); }
+.dark .dark\:bg-gray-900 { background-color: rgb(17, 24, 39); }
 .dark .dark\:text-white { color: rgb(255, 255, 255); }
+.dark .dark\:text-gray-200 { color: rgb(229, 231, 235); }
+.dark .dark\:border-gray-700 { border-color: rgb(55, 65, 81); }
+
+/* Light mode colors */
+html:not(.dark) { 
+  background-color: rgb(249, 250, 251); 
+  color: rgb(31, 41, 55);
+}
+html:not(.dark) body { 
+  background-color: rgb(249, 250, 251); 
+  color: rgb(31, 41, 55);
+}
+html:not(.dark) .message-user { 
+  background-color: rgb(37, 99, 235); 
+}
+html:not(.dark) .message-ai { 
+  background-color: rgb(229, 231, 235); 
+  color: rgb(31, 41, 55);
+  border-color: rgb(209, 213, 219);
+}
+html:not(.dark) .bg-gray-800 { 
+  background-color: rgb(243, 244, 246); 
+}
+html:not(.dark) .bg-gray-900 { 
+  background-color: rgb(249, 250, 251); 
+}
+html:not(.dark) .text-gray-200 { 
+  color: rgb(31, 41, 55); 
+}
+html:not(.dark) .text-gray-400 { 
+  color: rgb(75, 85, 99); 
+}
+html:not(.dark) .border-gray-700 { 
+  border-color: rgb(209, 213, 219); 
+}
 
 /* Animation */
 @keyframes typing {
