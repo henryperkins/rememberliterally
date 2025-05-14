@@ -110,12 +110,31 @@
                 
                 <!-- Message Input -->
                 <div class="border-t border-gray-700 p-4 bg-gray-800">
-                    <form id="messageForm" class="flex">
-                        <input type="text" class="flex-1 bg-gray-700 border border-gray-600 rounded-l-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500" 
-                               id="messageInput" placeholder="Type your message..." required>
-                        <button class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-r-md transition-colors" type="submit" id="sendButton">
-                            <i class="fas fa-paper-plane"></i>
-                        </button>
+                    <form id="messageForm" class="flex flex-col">
+                        <div class="flex mb-2" id="imagePreviewContainer" style="display: none;">
+                            <div class="relative mr-2">
+                                <img id="imagePreview" class="h-16 w-16 object-cover rounded-md border border-gray-600" src="#" alt="Preview">
+                                <button type="button" id="removeImageBtn" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center">
+                                    <i class="fas fa-times text-xs"></i>
+                                </button>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-sm text-gray-400">Image attached</p>
+                            </div>
+                        </div>
+                        <div class="flex">
+                            <div class="flex items-center">
+                                <label for="imageUpload" class="cursor-pointer bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-l-md transition-colors">
+                                    <i class="fas fa-image"></i>
+                                    <input type="file" id="imageUpload" accept="image/*" class="hidden">
+                                </label>
+                            </div>
+                            <input type="text" class="flex-1 bg-gray-700 border border-gray-600 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500" 
+                                   id="messageInput" placeholder="Type your message..." required>
+                            <button class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-r-md transition-colors" type="submit" id="sendButton">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>
