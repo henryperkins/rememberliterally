@@ -46,10 +46,15 @@
             <div class="col-md-3 sidebar p-0 d-none d-md-block">
                 <div class="sidebar-header p-3 d-flex justify-content-between align-items-center">
                     <h4>AI Chat</h4>
-                    <div class="theme-toggle">
-                        <button class="btn btn-sm btn-outline-secondary" id="themeToggleBtn">
-                            <i class="fas fa-moon"></i>
+                    <div class="d-flex">
+                        <button class="btn btn-sm btn-outline-danger me-2" id="clearChatBtn" title="Clear Chat History">
+                            <i class="fas fa-trash"></i>
                         </button>
+                        <div class="theme-toggle">
+                            <button class="btn btn-sm btn-outline-secondary" id="themeToggleBtn">
+                                <i class="fas fa-moon"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div class="user-info p-3 border-top border-bottom">
@@ -78,6 +83,9 @@
                 <div class="chat-header p-3 d-flex d-md-none justify-content-between align-items-center">
                     <h4>AI Chat</h4>
                     <div class="d-flex">
+                        <button class="btn btn-sm btn-outline-danger me-2" id="mobileClearChatBtn" title="Clear Chat History">
+                            <i class="fas fa-trash"></i>
+                        </button>
                         <div class="theme-toggle me-2">
                             <button class="btn btn-sm btn-outline-secondary" id="mobilethemeToggleBtn">
                                 <i class="fas fa-moon"></i>

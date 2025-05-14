@@ -26,24 +26,32 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize UI based on user state
     initializeUI();
     
+    // Get the clear chat buttons
+    const clearChatBtn = document.getElementById('clearChatBtn');
+    const mobileClearChatBtn = document.getElementById('mobileClearChatBtn');
+    
     // Event listeners
     usernameForm.addEventListener('submit', handleUsernameSubmit);
     messageForm.addEventListener('submit', handleMessageSubmit);
     themeToggleBtn.addEventListener('click', toggleTheme);
     mobileThemeToggleBtn.addEventListener('click', toggleTheme);
+    clearChatBtn.addEventListener('click', clearChat);
+    mobileClearChatBtn.addEventListener('click', clearChat);
     
     /**
      * Initialize the UI based on whether the user has a username
      */
     function initializeUI() {
-        if (username) {
-            // User has a username, show chat interface
+        const userId = localStorage.getItem('user_id');
+        
+        if (username && userId) {
+            // User has a username and ID, show chat interface
             chatContainer.classList.remove('d-none');
             usernameDisplay.textContent = username;
             mobileUsernameDisplay.textContent = username;
             
-            // Load conversation history
-            loadConversationHistory();
+            // Load messages from database
+            loadMessagesFromDatabase();
         } else {
             // New user, show welcome modal
             welcomeModal.show();
@@ -207,9 +215,62 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     /**
-     * Load conversation history from localStorage
+     * Load messages from the database for the current user
      */
-    function loadConversationHistory() {
+    function loadMessagesFromDatabase() {
+        const userId = localStorage.getItem('user_id');
+        
+        if (!userId) {
+            return; // No user ID, can't load messages
+        }
+        
+        fetch(`/api/messages?user_id=${userId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Clear container
+                    conversationContainer.innerHTML = ''; 
+                    
+                    // Process messages
+                    if (data.messages && data.messages.length > 0) {
+                        // Hide welcome message
+                        const welcomeMessage = document.querySelector('.welcome-message');
+                        if (welcomeMessage) {
+                            welcomeMessage.style.display = 'none';
+                        }
+                        
+                        // Clear local conversation and rebuild from database
+                        conversation = [];
+                        
+                        // Add messages to UI and update local conversation
+                        data.messages.forEach(msg => {
+                            addMessageToUI(msg.role, msg.content);
+                            conversation.push({
+                                role: msg.role,
+                                content: msg.content,
+                                timestamp: msg.timestamp
+                            });
+                        });
+                        
+                        // Save to localStorage as backup
+                        saveConversation();
+                    }
+                } else {
+                    console.error('Error loading messages:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching messages:', error);
+                
+                // Fallback to local storage if database fetch fails
+                loadConversationFromLocalStorage();
+            });
+    }
+    
+    /**
+     * Load conversation history from localStorage (fallback)
+     */
+    function loadConversationFromLocalStorage() {
         conversationContainer.innerHTML = ''; // Clear container
         
         if (conversation.length === 0) {
@@ -233,6 +294,8 @@ document.addEventListener('DOMContentLoaded', function() {
      * Get AI response from the backend
      */
     function getAIResponse(message) {
+        const userId = localStorage.getItem('user_id');
+        
         fetch('/api/chat', {
             method: 'POST',
             headers: {
@@ -241,6 +304,7 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify({
                 message: message,
                 username: username,
+                user_id: userId,
                 conversation_history: conversation
             }),
         })
@@ -259,7 +323,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Add AI response to UI
                 addMessageToUI('assistant', data.response);
                 
-                // Add to conversation history
+                // Add to conversation history (local backup)
                 addToConversation('assistant', data.response);
             } else {
                 // Show error
@@ -313,6 +377,72 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 icon.className = 'fas fa-moon';
             }
+        });
+    }
+    
+    /**
+     * Clear the chat history
+     */
+    function clearChat() {
+        const userId = localStorage.getItem('user_id');
+        
+        if (!userId) {
+            alert('User not found. Please reload the page and try again.');
+            return;
+        }
+        
+        // Ask for confirmation
+        if (!confirm('Are you sure you want to clear your chat history? This cannot be undone.')) {
+            return;
+        }
+        
+        // Show loading
+        const loadingMessage = document.createElement('div');
+        loadingMessage.className = 'text-center my-3';
+        loadingMessage.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><p>Clearing chat history...</p>';
+        conversationContainer.innerHTML = '';
+        conversationContainer.appendChild(loadingMessage);
+        
+        // Make API request to clear messages
+        fetch('/api/messages/clear', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                user_id: userId
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Clear local conversation
+                conversation = [];
+                localStorage.removeItem('conversation');
+                
+                // Clear UI
+                conversationContainer.innerHTML = '';
+                
+                // Show welcome message
+                const welcomeMessage = document.createElement('div');
+                welcomeMessage.className = 'welcome-message text-center py-5';
+                welcomeMessage.innerHTML = `
+                    <img src="https://pixabay.com/get/gbd3612108892163eb985b96454d9e7dd4e0a476496213b135a79d43542de268fbea92a84dae5a33f957315fe1ab99f93c82f8c0475183d19c22707264bb16354_1280.jpg" 
+                         alt="Welcome to chat" class="welcome-chat-image img-fluid rounded mb-4" style="max-width: 250px;">
+                    <h5>Welcome to AI Chat!</h5>
+                    <p>Chat history has been cleared. Ask me anything to get started.</p>
+                `;
+                conversationContainer.appendChild(welcomeMessage);
+            } else {
+                // Show error
+                conversationContainer.innerHTML = '';
+                showError(data.message || 'An error occurred while clearing the chat history.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            conversationContainer.innerHTML = '';
+            showError('Network error: Could not connect to the server.');
         });
     }
 });
