@@ -284,6 +284,24 @@ html:not(.dark) .text-gray-400 {
 html:not(.dark) .border-gray-700 { 
   border-color: rgb(209, 213, 219); 
 }
+html:not(.dark) .bg-gray-700 { 
+  background-color: rgb(229, 231, 235); 
+  color: rgb(31, 41, 55);
+}
+html:not(.dark) input.bg-gray-700 { 
+  background-color: rgb(243, 244, 246);
+  color: rgb(31, 41, 55);
+}
+html:not(.dark) input:focus {
+  outline: 2px solid rgb(59, 130, 246);
+  border-color: rgb(147, 197, 253);
+}
+html:not(.dark) .focus\:ring-primary-500:focus {
+  --tw-ring-color: rgb(59, 130, 246);
+}
+html:not(.dark) .border-gray-600 {
+  border-color: rgb(209, 213, 219);
+}
 
 /* Animation */
 @keyframes typing {
