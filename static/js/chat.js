@@ -462,7 +462,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     user_id: userId,
                     image_data: imageData,
                     conversation_history: conversation,
-                    streaming: true
+                    streaming: true,
+                    reasoning_effort: reasoningEffort,
+                    developer_message: developerMessage
                 }),
             }).catch(error => {
                 eventSource.close();
@@ -508,6 +510,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Add to conversation history
                     addToConversation('assistant', fullResponse);
+                    
+                    // Handle reasoning summary if available
+                    if (data.reasoning_summary) {
+                        // Display reasoning summary in a special format
+                        addReasoningSummary(data.reasoning_summary);
+                    }
                 }
             };
             
@@ -532,7 +540,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     user_id: userId,
                     image_data: imageData,
                     conversation_history: conversation,
-                    streaming: false
+                    streaming: false,
+                    reasoning_effort: reasoningEffort,
+                    developer_message: developerMessage
                 }),
             })
             .then(response => response.json())
@@ -545,6 +555,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Add to conversation history
                     addToConversation('assistant', data.response);
+                    
+                    // Handle reasoning summary if available
+                    if (data.reasoning_summary) {
+                        // Display reasoning summary in a special format
+                        addReasoningSummary(data.reasoning_summary);
+                    }
                 } else {
                     // Show error
                     showError(data.message || 'An error occurred while getting a response.');
@@ -559,6 +575,32 @@ document.addEventListener('DOMContentLoaded', function() {
                 isWaitingForResponse = false;
             });
         }
+    }
+    
+    /**
+     * Display a reasoning summary in the conversation
+     */
+    function addReasoningSummary(summary) {
+        const summaryDiv = document.createElement('div');
+        summaryDiv.className = 'bg-primary-900/30 text-primary-100 border border-primary-700 rounded-md p-3 my-2 mx-4';
+        
+        // Create heading
+        const heading = document.createElement('div');
+        heading.className = 'font-medium text-sm mb-1 flex items-center';
+        heading.innerHTML = '<i class="fas fa-brain mr-2"></i> Reasoning Summary';
+        
+        // Create content
+        const content = document.createElement('div');
+        content.className = 'text-sm opacity-90';
+        content.textContent = summary;
+        
+        // Add elements to the summary div
+        summaryDiv.appendChild(heading);
+        summaryDiv.appendChild(content);
+        
+        // Add to conversation container
+        conversationContainer.appendChild(summaryDiv);
+        scrollToBottom();
     }
     
     /**
