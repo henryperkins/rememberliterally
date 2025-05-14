@@ -16,11 +16,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const imagePreview = document.getElementById('imagePreview');
     const removeImageBtn = document.getElementById('removeImageBtn');
     
+    // Advanced options elements
+    const toggleAdvancedOptionsBtn = document.getElementById('toggleAdvancedOptions');
+    const advancedOptionsPanel = document.getElementById('advancedOptionsPanel');
+    const advancedOptionsIcon = document.getElementById('advancedOptionsIcon');
+    const reasoningEffortRadios = document.getElementsByName('reasoningEffort');
+    const developerMessageInput = document.getElementById('developerMessageInput');
+    
     // State variables
     let username = localStorage.getItem('username');
     let conversation = JSON.parse(localStorage.getItem('conversation') || '[]');
     let isWaitingForResponse = false;
     let imageData = null; // For storing base64 encoded image data
+    let showAdvancedOptions = false; // Track if advanced options panel is visible
     
     // Theme preference
     const prefersDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -44,6 +52,8 @@ document.addEventListener('DOMContentLoaded', function() {
     mobileClearChatBtn.addEventListener('click', clearChat);
     imageUploadInput.addEventListener('change', handleImageUpload);
     removeImageBtn.addEventListener('click', clearImageUpload);
+    // Advanced options toggle
+    toggleAdvancedOptionsBtn.addEventListener('click', toggleAdvancedOptions);
     
     /**
      * Initialize the UI based on whether the user has a username

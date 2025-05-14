@@ -144,6 +144,8 @@ def chat():
         conversation_history = data.get('conversation_history', [])
         image_data = data.get('image_data')  # Base64 encoded image data
         use_streaming = data.get('streaming', False)  # Whether to use streaming response
+        reasoning_effort = data.get('reasoning_effort')  # Reasoning effort level (low, medium, high)
+        developer_message = data.get('developer_message')  # Developer message (like system message)
         
         # Check if user is logged in via session
         user_id = data.get('user_id')
@@ -154,6 +156,10 @@ def chat():
         logging.debug(f"Conversation history length: {len(conversation_history)}")
         if image_data:
             logging.debug("Image data included with message")
+        if reasoning_effort:
+            logging.debug(f"Reasoning effort: {reasoning_effort}")
+        if developer_message:
+            logging.debug(f"Developer message provided")
         
         # Store user message in database if user_id is provided
         if user_id:
@@ -164,6 +170,16 @@ def chat():
                 image_data=image_data
             )
             db.session.add(user_message)
+            db.session.commit()
+            
+        # Store developer message if provided
+        if user_id and developer_message:
+            dev_message = Message(
+                content=developer_message,
+                role='developer',
+                user_id=user_id
+            )
+            db.session.add(dev_message)
             db.session.commit()
         
         # Handle streaming or regular response
@@ -176,7 +192,8 @@ def chat():
                         content="",
                         role='assistant',
                         user_id=user_id,
-                        is_streaming=True
+                        is_streaming=True,
+                        reasoning_effort=reasoning_effort
                     )
                     db.session.add(ai_message)
                     db.session.commit()
@@ -184,12 +201,36 @@ def chat():
                 
                 # Start streaming the response
                 full_response = ""
-                for chunk in stream_ai_response(message_content, conversation_history, image_data):
+                reasoning_summary = None
+                
+                for chunk in stream_ai_response(
+                    message_content, 
+                    conversation_history, 
+                    image_data,
+                    reasoning_effort,
+                    developer_message
+                ):
+                    # Check if this chunk contains a reasoning summary
+                    if chunk.startswith("\n\n<reasoning-summary>") and chunk.endswith("</reasoning-summary>"):
+                        # Extract the reasoning summary
+                        reasoning_summary = chunk[24:-21]  # Remove the tags
+                        
+                        # Store the reasoning summary in the database
+                        if user_id and ai_message:
+                            ai_message.reasoning_summary = reasoning_summary
+                            db.session.commit()
+                            
+                        # Don't include the reasoning summary in the response text
+                        continue
+                    
+                    # Add the chunk to the full response
                     full_response += chunk
+                    
                     # Update the streaming message in the database
                     if user_id and ai_message:
                         ai_message.content = full_response
                         db.session.commit()
+                    
                     # Send the chunk to the client
                     yield f"data: {json.dumps({'chunk': chunk, 'is_final': False})}\n\n"
                 
@@ -199,28 +240,53 @@ def chat():
                     db.session.commit()
                 
                 # Send the final chunk to the client
-                yield f"data: {json.dumps({'chunk': '', 'is_final': True, 'full_response': full_response})}\n\n"
+                response_data = {
+                    'chunk': '', 
+                    'is_final': True, 
+                    'full_response': full_response
+                }
+                
+                # Include reasoning summary if available
+                if reasoning_summary:
+                    response_data['reasoning_summary'] = reasoning_summary
+                    
+                yield f"data: {json.dumps(response_data)}\n\n"
             
             return Response(generate(), mimetype='text/event-stream')
         else:
             # Generate regular AI response
-            ai_response = generate_ai_response(message_content, conversation_history, image_data)
+            ai_response, reasoning_summary = generate_ai_response(
+                message_content, 
+                conversation_history, 
+                image_data,
+                reasoning_effort,
+                developer_message
+            )
             
             # Store AI response in database if user_id is provided
             if user_id:
                 ai_message = Message(
                     content=ai_response,
                     role='assistant',
-                    user_id=user_id
+                    user_id=user_id,
+                    reasoning_effort=reasoning_effort,
+                    reasoning_summary=reasoning_summary
                 )
                 db.session.add(ai_message)
                 db.session.commit()
             
-            # Return the response
-            return jsonify({
+            # Prepare response data
+            response_data = {
                 'status': 'success',
                 'response': ai_response
-            })
+            }
+            
+            # Include reasoning summary if available
+            if reasoning_summary:
+                response_data['reasoning_summary'] = reasoning_summary
+            
+            # Return the response
+            return jsonify(response_data)
     except Exception as e:
         logging.error(f"Error in chat endpoint: {str(e)}")
         return jsonify({
