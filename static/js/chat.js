@@ -94,7 +94,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const usernameDisplay = document.getElementById('usernameDisplay');
     const mobileUsernameDisplay = document.getElementById('mobileUsernameDisplay');
     const themeToggleBtn = document.getElementById('themeToggleBtn');
-    const mobileThemeToggleBtn = document.getElementById('mobilethemeToggleBtn');
+    const mobileThemeToggleBtn = document.getElementById('mobileThemeToggleBtn');
     const imageUploadInput = document.getElementById('imageUpload');
     const imagePreviewContainer = document.getElementById('imagePreviewContainer');
     const imagePreview = document.getElementById('imagePreview');
