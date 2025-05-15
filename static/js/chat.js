@@ -901,10 +901,18 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateThemeIcon() {
         const icons = document.querySelectorAll('.theme-toggle i');
         icons.forEach(icon => {
+            // Instead of replacing the entire className, just update the icon
+            // Remove both icon classes
+            icon.classList.remove('fa-sun', 'fa-moon');
+            // Add the appropriate icon class
             if (currentTheme === 'dark') {
-                icon.className = 'fas fa-sun';
+                icon.classList.add('fa-sun');
             } else {
-                icon.className = 'fas fa-moon';
+                icon.classList.add('fa-moon');
+            }
+            // Make sure the base 'fas' class is always present
+            if (!icon.classList.contains('fas')) {
+                icon.classList.add('fas');
             }
         });
     }

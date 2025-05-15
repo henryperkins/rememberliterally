@@ -210,6 +210,7 @@
 .bg-gray-900 { background-color: rgb(17, 24, 39); }
 .bg-red-900 { background-color: rgb(127, 29, 29); }
 .bg-primary-600 { background-color: rgb(2, 132, 199); }
+.bg-green-600 { background-color: rgb(22, 163, 74); }
 .text-center { text-align: center; }
 .text-white { color: rgb(255, 255, 255); }
 .text-gray-200 { color: rgb(229, 231, 235); }
@@ -241,6 +242,7 @@
 .hover\:bg-gray-600:hover { background-color: rgb(75, 85, 99); }
 .hover\:bg-primary-700:hover { background-color: rgb(3, 105, 161); }
 .hover\:bg-red-800:hover { background-color: rgb(153, 27, 27); }
+.hover\:bg-green-700:hover { background-color: rgb(21, 128, 61); }
 .focus\:outline-none:focus { outline: 2px solid transparent; outline-offset: 2px; }
 .focus\:ring-2:focus { box-shadow: 0 0 0 2px rgb(56, 189, 248, 0.5); }
 .focus\:ring-primary-500:focus { --tw-ring-color: rgb(14, 165, 233); }
