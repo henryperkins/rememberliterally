@@ -794,7 +794,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     conversation_history: conversation,
                     streaming: false,
                     reasoning_effort: reasoningEffort,
-                    developer_message: developerMessage
+                    developer_message: developerMessage,
+                    model: model
                 }),
             })
             .then(response => response.json())
