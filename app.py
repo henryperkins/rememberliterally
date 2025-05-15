@@ -146,6 +146,7 @@ def chat():
         use_streaming = data.get('streaming', False)  # Whether to use streaming response
         reasoning_effort = data.get('reasoning_effort')  # Reasoning effort level (low, medium, high)
         developer_message = data.get('developer_message')  # Developer message (like system message)
+        model = data.get('model')  # The deployment model to use
         
         # Check if user is logged in via session
         user_id = data.get('user_id')
@@ -208,7 +209,8 @@ def chat():
                     conversation_history, 
                     image_data,
                     reasoning_effort,
-                    developer_message
+                    developer_message,
+                    model
                 ):
                     # Check if this chunk contains a reasoning summary
                     if chunk.startswith("\n\n<reasoning-summary>") and chunk.endswith("</reasoning-summary>"):
@@ -260,7 +262,8 @@ def chat():
                 conversation_history, 
                 image_data,
                 reasoning_effort,
-                developer_message
+                developer_message,
+                model
             )
             
             # Store AI response in database if user_id is provided
@@ -294,6 +297,24 @@ def chat():
             'message': f"An error occurred: {str(e)}"
         }), 500
         
+@app.route('/api/models', methods=['GET'])
+def get_available_models_api():
+    """Get the list of available AI models."""
+    try:
+        # Get models from the helper function
+        models = get_available_models()
+        
+        return jsonify({
+            'status': 'success',
+            'models': models
+        })
+    except Exception as e:
+        logging.error(f"Error getting models: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': f"An error occurred: {str(e)}"
+        }), 500
+
 @app.route('/api/upload-image', methods=['POST'])
 def upload_image():
     """Handle image uploads for chat"""
