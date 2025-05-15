@@ -5,38 +5,80 @@ codeBlockStyles.textContent = `
         margin: 1rem 0;
         border-radius: 0.375rem;
         overflow: hidden;
+        border: 1px solid rgba(75, 85, 99, 0.4);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     }
     .code-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         padding: 0.5rem 1rem;
-        font-family: monospace;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        border-bottom: 1px solid rgba(75, 85, 99, 0.4);
     }
     .code-block pre {
         margin: 0;
         padding: 1rem;
         overflow-x: auto;
-        font-family: monospace;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         font-size: 0.875rem;
         line-height: 1.5;
     }
     .code-block code {
-        font-family: monospace;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        white-space: pre;
+        word-break: normal;
+        word-wrap: normal;
     }
     .copy-code-btn {
         cursor: pointer;
         transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.75rem;
     }
     .copy-code-btn:hover {
         opacity: 0.9;
     }
+    .copy-code-btn:disabled {
+        opacity: 0.7;
+        cursor: default;
+    }
     .message-content code {
-        font-family: monospace;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         background-color: rgba(0, 0, 0, 0.1);
         padding: 0.125rem 0.25rem;
         border-radius: 0.25rem;
     }
+    
+    /* Light mode adjustments */
+    html:not(.dark) .code-block {
+        background-color: #f3f4f6;
+        border-color: #d1d5db;
+    }
+    html:not(.dark) .code-header {
+        background-color: #e5e7eb;
+        border-color: #d1d5db;
+    }
+    html:not(.dark) .code-block pre {
+        color: #1f2937;
+    }
+    
+    /* Syntax highlighting classes */
+    .language-javascript .keyword { color: #8b5cf6; }
+    .language-javascript .string { color: #10b981; }
+    .language-javascript .number { color: #f59e0b; }
+    .language-javascript .comment { color: #6b7280; font-style: italic; }
+    
+    .language-python .keyword { color: #8b5cf6; }
+    .language-python .string { color: #10b981; }
+    .language-python .number { color: #f59e0b; }
+    .language-python .comment { color: #6b7280; font-style: italic; }
+    
+    .language-html .tag { color: #ef4444; }
+    .language-html .attr { color: #8b5cf6; }
+    .language-html .string { color: #10b981; }
 `;
 document.head.appendChild(codeBlockStyles);
 
@@ -311,29 +353,77 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function copyToClipboard(button) {
         const codeText = button.getAttribute('data-clipboard-text');
+        
+        // Update button appearance immediately
+        const originalText = button.innerHTML;
+        button.disabled = true;
+        
+        // Try to use modern clipboard API first
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(codeText)
+                .then(() => {
+                    // Success feedback
+                    button.innerHTML = '<i class="fas fa-check mr-1"></i>Copied!';
+                    button.classList.remove('bg-primary-600', 'hover:bg-primary-700');
+                    button.classList.add('bg-green-600', 'hover:bg-green-700');
+                    
+                    setTimeout(() => {
+                        button.innerHTML = originalText;
+                        button.classList.remove('bg-green-600', 'hover:bg-green-700');
+                        button.classList.add('bg-primary-600', 'hover:bg-primary-700');
+                        button.disabled = false;
+                    }, 2000);
+                })
+                .catch(err => {
+                    console.error('Could not copy text with Clipboard API: ', err);
+                    // Fallback to execCommand
+                    fallbackCopyToClipboard(codeText, button, originalText);
+                });
+        } else {
+            // Fallback for browsers without clipboard API
+            fallbackCopyToClipboard(codeText, button, originalText);
+        }
+    }
+    
+    /**
+     * Fallback method for copying to clipboard using execCommand
+     */
+    function fallbackCopyToClipboard(text, button, originalText) {
         const textArea = document.createElement('textarea');
-        textArea.value = codeText;
+        textArea.value = text;
+        textArea.style.position = 'fixed';  // Avoid scrolling to bottom
         document.body.appendChild(textArea);
+        textArea.focus();
         textArea.select();
         
         try {
-            document.execCommand('copy');
-            // Change button text temporarily to indicate success
-            const originalText = button.innerHTML;
-            button.innerHTML = '<i class="fas fa-check mr-1"></i>Copied!';
-            button.classList.remove('bg-primary-600', 'hover:bg-primary-700');
-            button.classList.add('bg-green-600', 'hover:bg-green-700');
-            
-            setTimeout(() => {
-                button.innerHTML = originalText;
-                button.classList.remove('bg-green-600', 'hover:bg-green-700');
-                button.classList.add('bg-primary-600', 'hover:bg-primary-700');
-            }, 2000);
+            const successful = document.execCommand('copy');
+            if (successful) {
+                // Success feedback
+                button.innerHTML = '<i class="fas fa-check mr-1"></i>Copied!';
+                button.classList.remove('bg-primary-600', 'hover:bg-primary-700');
+                button.classList.add('bg-green-600', 'hover:bg-green-700');
+            } else {
+                button.innerHTML = '<i class="fas fa-times mr-1"></i>Failed';
+                button.classList.remove('bg-primary-600', 'hover:bg-primary-700');
+                button.classList.add('bg-red-600', 'hover:bg-red-700');
+            }
         } catch (err) {
             console.error('Failed to copy text: ', err);
+            button.innerHTML = '<i class="fas fa-times mr-1"></i>Failed';
+            button.classList.remove('bg-primary-600', 'hover:bg-primary-700');
+            button.classList.add('bg-red-600', 'hover:bg-red-700');
         }
         
         document.body.removeChild(textArea);
+        
+        // Reset button after delay
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.classList.remove('bg-green-600', 'hover:bg-green-700', 'bg-red-600', 'hover:bg-red-700');
+            button.classList.add('bg-primary-600', 'hover:bg-primary-700');
+            button.disabled = false;
+        }, 2000);
     }
     
     // Make copyToClipboard available globally

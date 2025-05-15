@@ -15,6 +15,19 @@ AZURE_OPENAI_DEPLOYMENT_NAME = os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME", "g
 # O3 and O4 models that support reasoning summary
 MODELS_WITH_REASONING_SUMMARY = ["o3", "o4-mini"]
 
+# Available deployment models - this would typically come from an API,
+# but we're hardcoding for demonstration. In production, you'd fetch from Azure.
+AVAILABLE_MODELS = [
+    {"id": "gpt-4o", "name": "GPT-4o", "description": "Latest and most capable model with vision support"},
+    {"id": "gpt-4o-mini", "name": "GPT-4o-mini", "description": "Faster and more cost-effective version with reasoning"},
+    {"id": "gpt-35-turbo", "name": "GPT-3.5 Turbo", "description": "Fast and efficient for simpler tasks"},
+    {"id": "gpt-4", "name": "GPT-4", "description": "Strong reasoning capabilities"}
+]
+
+def get_available_models():
+    """Return the list of available models."""
+    return AVAILABLE_MODELS
+
 def get_openai_client():
     """Create and return an Azure OpenAI client."""
     try:
@@ -73,7 +86,7 @@ def format_conversation_history(conversation_history):
     
     return formatted_messages
 
-def generate_ai_response(message, conversation_history=None, image_data=None, reasoning_effort=None, developer_message=None):
+def generate_ai_response(message, conversation_history=None, image_data=None, reasoning_effort=None, developer_message=None, model=None):
     """Generate an AI response using Azure OpenAI API.
     
     Args:
@@ -82,12 +95,16 @@ def generate_ai_response(message, conversation_history=None, image_data=None, re
         image_data (str, optional): Base64-encoded image data
         reasoning_effort (str, optional): Reasoning effort level (low, medium, high)
         developer_message (str, optional): Developer message to include (like system message)
+        model (str, optional): The deployment model ID to use, defaults to AZURE_OPENAI_DEPLOYMENT_NAME
     
     Returns:
         tuple: (response_text, reasoning_summary) where reasoning_summary is None if not supported
     """
     if conversation_history is None:
         conversation_history = []
+    
+    # Use specified model or the default
+    deployment_name = model if model else AZURE_OPENAI_DEPLOYMENT_NAME
     
     try:
         client = get_openai_client()
@@ -125,11 +142,11 @@ def generate_ai_response(message, conversation_history=None, image_data=None, re
         input_messages = formatted_history + [user_message]
         
         # Get response from Azure OpenAI
-        logging.debug(f"Sending request to Azure OpenAI with {len(input_messages)} messages")
+        logging.debug(f"Sending request to Azure OpenAI using model {deployment_name} with {len(input_messages)} messages")
         
         # Set up parameters for the API call
         params = {
-            "model": AZURE_OPENAI_DEPLOYMENT_NAME,
+            "model": deployment_name,
             "input": input_messages
         }
         
@@ -154,7 +171,7 @@ def generate_ai_response(message, conversation_history=None, image_data=None, re
                             response_text = content_item.text
                 
             # Check for reasoning summary if model supports it
-            current_model = AZURE_OPENAI_DEPLOYMENT_NAME.lower()
+            current_model = deployment_name.lower()
             if any(model_name in current_model for model_name in MODELS_WITH_REASONING_SUMMARY):
                 if hasattr(response, 'reasoning_summary'):
                     reasoning_summary = response.reasoning_summary
@@ -169,7 +186,7 @@ def generate_ai_response(message, conversation_history=None, image_data=None, re
         logging.error(f"Error generating AI response: {str(e)}")
         return f"Sorry, there was an error communicating with the AI service: {str(e)}", None
         
-def stream_ai_response(message, conversation_history=None, image_data=None, reasoning_effort=None, developer_message=None):
+def stream_ai_response(message, conversation_history=None, image_data=None, reasoning_effort=None, developer_message=None, model=None):
     """Stream an AI response using Azure OpenAI API.
     
     Args:
@@ -178,12 +195,16 @@ def stream_ai_response(message, conversation_history=None, image_data=None, reas
         image_data (str, optional): Base64-encoded image data
         reasoning_effort (str, optional): Reasoning effort level (low, medium, high)
         developer_message (str, optional): Developer message to include (like system message)
+        model (str, optional): The deployment model ID to use, defaults to AZURE_OPENAI_DEPLOYMENT_NAME
         
     Returns:
         generator: A generator that yields chunks of the AI response as they become available
     """
     if conversation_history is None:
         conversation_history = []
+    
+    # Use specified model or the default
+    deployment_name = model if model else AZURE_OPENAI_DEPLOYMENT_NAME
     
     try:
         client = get_openai_client()
@@ -221,11 +242,11 @@ def stream_ai_response(message, conversation_history=None, image_data=None, reas
         input_messages = formatted_history + [user_message]
         
         # Get streaming response from Azure OpenAI
-        logging.debug(f"Sending streaming request to Azure OpenAI with {len(input_messages)} messages")
+        logging.debug(f"Sending streaming request to Azure OpenAI using model {deployment_name} with {len(input_messages)} messages")
         
         # Set up parameters for the API call
         params = {
-            "model": AZURE_OPENAI_DEPLOYMENT_NAME,
+            "model": deployment_name,
             "input": input_messages,
             "stream": True  # Enable streaming
         }
