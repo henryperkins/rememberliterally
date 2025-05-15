@@ -135,7 +135,6 @@ def register_user():
 def chat():
     """Process chat messages and get AI responses."""
     try:
-        from models import Message
         from utils.openai_helper import generate_ai_response, stream_ai_response
         from flask import Response
         
@@ -162,33 +161,48 @@ def chat():
         if developer_message:
             logging.debug(f"Developer message provided")
         
-        # Store user message in database if user_id is provided
+        # Store user message depending on database availability
         if user_id:
-            user_message = Message(
-                content=message_content,
-                role='user',
-                user_id=user_id,
-                image_data=image_data
-            )
-            db.session.add(user_message)
-            db.session.commit()
-            
-        # Store developer message if provided
-        if user_id and developer_message:
-            dev_message = Message(
-                content=developer_message,
-                role='developer',
-                user_id=user_id
-            )
-            db.session.add(dev_message)
-            db.session.commit()
+            if is_database_available():
+                # Database storage for user message
+                from models import Message
+                
+                user_message = Message(
+                    content=message_content,
+                    role='user',
+                    user_id=user_id,
+                    image_data=image_data
+                )
+                db.session.add(user_message)
+                db.session.commit()
+                
+                # Store developer message if provided
+                if developer_message:
+                    dev_message = Message(
+                        content=developer_message,
+                        role='developer',
+                        user_id=user_id
+                    )
+                    db.session.add(dev_message)
+                    db.session.commit()
+            else:
+                # Fallback storage for user message
+                from utils.db_fallback import add_message
+                
+                add_message(int(user_id), message_content, 'user')
+                
+                # Store developer message if provided
+                if developer_message:
+                    add_message(int(user_id), developer_message, 'developer')
         
         # Handle streaming or regular response
         if use_streaming:
             def generate():
-                # Create an initial streaming message in the database
+                # Create an initial streaming message if database is available
                 ai_message = None
-                if user_id:
+                if user_id and is_database_available():
+                    from models import Message
+                    
                     ai_message = Message(
                         content="",
                         role='assistant',
@@ -217,8 +231,8 @@ def chat():
                         # Extract the reasoning summary
                         reasoning_summary = chunk[24:-21]  # Remove the tags
                         
-                        # Store the reasoning summary in the database
-                        if user_id and ai_message:
+                        # Store the reasoning summary if using database
+                        if user_id and ai_message and is_database_available():
                             ai_message.reasoning_summary = reasoning_summary
                             db.session.commit()
                             
@@ -228,18 +242,22 @@ def chat():
                     # Add the chunk to the full response
                     full_response += chunk
                     
-                    # Update the streaming message in the database
-                    if user_id and ai_message:
+                    # Update the streaming message if using database
+                    if user_id and ai_message and is_database_available():
                         ai_message.content = full_response
                         db.session.commit()
                     
                     # Send the chunk to the client
                     yield f"data: {json.dumps({'chunk': chunk, 'is_final': False})}\n\n"
                 
-                # Update the final message in the database and mark as no longer streaming
-                if user_id and ai_message:
+                # Finalize the message in the database if available
+                if user_id and ai_message and is_database_available():
                     ai_message.is_streaming = False
                     db.session.commit()
+                # Store the final message in fallback storage if needed
+                elif user_id and not is_database_available():
+                    from utils.db_fallback import add_message
+                    add_message(int(user_id), full_response, 'assistant')
                 
                 # Send the final chunk to the client
                 response_data = {
@@ -266,17 +284,25 @@ def chat():
                 model
             )
             
-            # Store AI response in database if user_id is provided
+            # Store AI response based on database availability
             if user_id:
-                ai_message = Message(
-                    content=ai_response,
-                    role='assistant',
-                    user_id=user_id,
-                    reasoning_effort=reasoning_effort,
-                    reasoning_summary=reasoning_summary
-                )
-                db.session.add(ai_message)
-                db.session.commit()
+                if is_database_available():
+                    # Database storage
+                    from models import Message
+                    
+                    ai_message = Message(
+                        content=ai_response,
+                        role='assistant',
+                        user_id=user_id,
+                        reasoning_effort=reasoning_effort,
+                        reasoning_summary=reasoning_summary
+                    )
+                    db.session.add(ai_message)
+                    db.session.commit()
+                else:
+                    # Fallback storage
+                    from utils.db_fallback import add_message
+                    add_message(int(user_id), ai_response, 'assistant')
             
             # Prepare response data
             response_data = {
@@ -354,7 +380,6 @@ def upload_image():
 def get_messages():
     """Get conversation history for a user."""
     try:
-        from models import Message
         user_id = request.args.get('user_id')
         
         if not user_id:
@@ -363,11 +388,34 @@ def get_messages():
                 'message': 'User ID is required'
             }), 400
         
-        # Get messages for the user
-        messages = Message.query.filter_by(user_id=user_id).order_by(Message.timestamp).all()
-        
-        # Convert messages to dictionaries
-        message_list = [msg.to_dict() for msg in messages]
+        if is_database_available():
+            # Database storage path
+            from models import Message
+            
+            # Get messages for the user
+            messages = Message.query.filter_by(user_id=user_id).order_by(Message.timestamp).all()
+            
+            # Convert messages to dictionaries
+            message_list = [msg.to_dict() for msg in messages]
+        else:
+            # Fallback storage path
+            from utils.db_fallback import get_messages_for_user
+            
+            # Get messages from in-memory storage
+            raw_messages = get_messages_for_user(int(user_id))
+            
+            # Convert to a format similar to the database message format
+            message_list = [{
+                'id': msg['id'],
+                'content': msg['content'],
+                'role': msg['role'],
+                'timestamp': msg['timestamp'] or '',
+                'user_id': msg['user_id'],
+                'has_image': False,  # Not supported in fallback
+                'is_streaming': False,
+                'reasoning_effort': None,
+                'reasoning_summary': None
+            } for msg in raw_messages]
         
         return jsonify({
             'status': 'success',
@@ -384,7 +432,6 @@ def get_messages():
 def get_message_image(message_id):
     """Get image data for a specific message."""
     try:
-        from models import Message
         user_id = request.args.get('user_id')
         
         if not user_id:
@@ -392,28 +439,40 @@ def get_message_image(message_id):
                 'status': 'error',
                 'message': 'User ID is required'
             }), 400
-        
-        # Get the message and verify it belongs to the user
-        message = Message.query.filter_by(id=message_id, user_id=user_id).first()
-        
-        if not message:
+            
+        if is_database_available():
+            # Database storage path
+            from models import Message
+            
+            # Get the message and verify it belongs to the user
+            message = Message.query.filter_by(id=message_id, user_id=user_id).first()
+            
+            if not message:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Message not found or does not belong to this user'
+                }), 404
+            
+            # Check if message has image data
+            if not message.image_data:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'This message does not have an image'
+                }), 404
+            
+            # Return the image data
+            return jsonify({
+                'status': 'success',
+                'image_data': message.image_data
+            })
+        else:
+            # Fallback storage path
+            # Note: In-memory storage doesn't support image data, so we'll return an error
             return jsonify({
                 'status': 'error',
-                'message': 'Message not found or does not belong to this user'
-            }), 404
-        
-        # Check if message has image data
-        if not message.image_data:
-            return jsonify({
-                'status': 'error',
-                'message': 'This message does not have an image'
-            }), 404
-        
-        # Return the image data
-        return jsonify({
-            'status': 'success',
-            'image_data': message.image_data
-        })
+                'message': 'Image retrieval is not available in fallback mode'
+            }), 503  # Service Unavailable
+            
     except Exception as e:
         logging.error(f"Error in get_message_image endpoint: {str(e)}")
         return jsonify({
@@ -425,7 +484,6 @@ def get_message_image(message_id):
 def clear_messages():
     """Clear all messages for a user."""
     try:
-        from models import Message
         data = request.json
         user_id = data.get('user_id')
         
@@ -435,11 +493,23 @@ def clear_messages():
                 'message': 'User ID is required'
             }), 400
         
-        # Delete all messages for the user
-        Message.query.filter_by(user_id=user_id).delete()
-        db.session.commit()
-        
-        logging.debug(f"Cleared messages for user ID: {user_id}")
+        if is_database_available():
+            # Database storage path
+            from models import Message
+            
+            # Delete all messages for the user
+            Message.query.filter_by(user_id=user_id).delete()
+            db.session.commit()
+            
+            logging.debug(f"Cleared database messages for user ID: {user_id}")
+        else:
+            # Fallback storage path
+            from utils.db_fallback import clear_messages_for_user
+            
+            # Clear messages in memory
+            clear_messages_for_user(int(user_id))
+            
+            logging.debug(f"Cleared in-memory messages for user ID: {user_id}")
         
         return jsonify({
             'status': 'success',
