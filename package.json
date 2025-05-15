@@ -10,5 +10,8 @@
   },
   "dependencies": {
     "tailwindcss": "^4.1.6"
+  },
+  "scripts": {
+    "tailwindcss": "tailwindcss"
   }
 }

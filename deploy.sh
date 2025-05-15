@@ -3,7 +3,7 @@
 
 # Step 1: Build Tailwind CSS
 echo "Building Tailwind CSS..."
-npx tailwindcss -i ./static/css/tailwind-input.css -o ./static/css/styles.css --minify
+npm run tailwindcss -- -i ./static/css/tailwind-input.css -o ./static/css/styles.css --minify
 
 # Step 2: Start the Gunicorn server
 echo "Starting Gunicorn server..."
