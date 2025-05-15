@@ -1,17 +1,18 @@
+
 {
   "name": "workspace",
   "module": "index.ts",
   "type": "module",
   "devDependencies": {
     "@types/bun": "latest",
-    "tailwindcss": "^3.4.1"
+    "tailwindcss": "^4.1.6"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
   "scripts": {
     "tailwindcss": "tailwindcss",
-    "build:css": "tailwindcss build ./static/css/tailwind-input.css -o ./static/css/styles.css --minify"
+    "build:css": "tailwindcss -i ./static/css/tailwind-input.css -o ./static/css/styles.css --minify"
   },
   "dependencies": {
     "prettier": "^3.5.3",
