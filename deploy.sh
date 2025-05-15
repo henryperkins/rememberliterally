@@ -1,3 +1,4 @@
+
 #!/bin/bash
 # Deployment script for Azure AI Chat application
 
@@ -7,4 +8,4 @@ npx tailwindcss -i ./static/css/tailwind-input.css -o ./static/css/styles.css --
 
 # Step 2: Start the Gunicorn server
 echo "Starting Gunicorn server..."
-exec gunicorn --bind 0.0.0.0:$PORT --reuse-port main:app
+exec gunicorn --bind 0.0.0.0:5000 --reuse-port main:app
