@@ -12,8 +12,8 @@ AZURE_OPENAI_ENDPOINT = os.environ.get("AZURE_OPENAI_ENDPOINT")
 AZURE_OPENAI_API_VERSION = os.environ.get("AZURE_OPENAI_API_VERSION", "2025-03-01-preview")
 AZURE_OPENAI_DEPLOYMENT_NAME = os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o")
 
-# Models that support reasoning summary capability
-MODELS_WITH_REASONING_SUMMARY = ["o3", "o3-mini", "gpt-4.1", "gpt-4.1-mini"]
+# Models that support reasoning summary capability - currently only o3
+MODELS_WITH_REASONING_SUMMARY = ["o3"]
 
 # Available Azure OpenAI deployment models - this would typically come from an API,
 # but we're hardcoding for demonstration. In production, you'd fetch from Azure.
