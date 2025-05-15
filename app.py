@@ -5,7 +5,7 @@ import json
 from sqlalchemy.orm import DeclarativeBase
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, current_user, login_user, logout_user, login_required
-from utils.openai_helper import generate_ai_response
+from utils.openai_helper import generate_ai_response, stream_ai_response, get_available_models
 
 # Flag to indicate if the database is available
 database_status = {'available': True}
