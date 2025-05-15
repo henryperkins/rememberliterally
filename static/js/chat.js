@@ -138,6 +138,8 @@ document.addEventListener('DOMContentLoaded', function() {
     mobileClearChatBtn.addEventListener('click', clearChat);
     imageUploadInput.addEventListener('change', handleImageUpload);
     removeImageBtn.addEventListener('click', clearImageUpload);
+    
+    // Note: model selection event listener is set in initializeUI
     // Advanced options toggle
     toggleAdvancedOptionsBtn.addEventListener('click', toggleAdvancedOptions);
     
