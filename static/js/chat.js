@@ -226,14 +226,72 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     /**
-     * Format message content (handle URLs, line breaks, etc.)
+     * Format message content (handle URLs, line breaks, code blocks, etc.)
      */
     function formatMessageContent(content) {
         // Convert URLs to links
         content = content.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>');
         
-        // Convert line breaks to <br>
+        // Handle code blocks with ```
+        content = content.replace(/```(\w*)\n([\s\S]*?)\n```/g, function(match, language, codeContent) {
+            const languageClass = language ? `language-${language}` : '';
+            const escapedCode = codeContent
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+                
+            return `
+                <div class="code-block bg-gray-800 dark:bg-gray-900 rounded-md my-2 relative">
+                    <div class="code-header flex justify-between items-center p-2 bg-gray-700 dark:bg-gray-800 rounded-t-md">
+                        <span class="text-xs text-gray-300">${language || 'code'}</span>
+                        <button class="copy-code-btn bg-primary-600 hover:bg-primary-700 text-white text-xs rounded px-2 py-1" 
+                                onclick="copyToClipboard(this)" data-clipboard-text="${escapedCode}">
+                            <i class="fas fa-clipboard mr-1"></i>Copy
+                        </button>
+                    </div>
+                    <pre class="text-gray-200 p-4 overflow-x-auto"><code class="${languageClass}">${escapedCode}</code></pre>
+                </div>
+            `;
+        });
+        
+        // Handle inline code with single backticks
+        content = content.replace(/`([^`]+)`/g, '<code class="bg-gray-700 dark:bg-gray-800 rounded px-1 py-0.5 text-sm">$1</code>');
+        
+        // Convert regular line breaks to <br> (after handling code blocks)
         return content.replace(/\n/g, '<br>');
+    }
+    
+    /**
+     * Copy code to clipboard
+     * @param {HTMLElement} button - The copy button that was clicked
+     */
+    function copyToClipboard(button) {
+        const codeText = button.getAttribute('data-clipboard-text');
+        const textArea = document.createElement('textarea');
+        textArea.value = codeText;
+        document.body.appendChild(textArea);
+        textArea.select();
+        
+        try {
+            document.execCommand('copy');
+            // Change button text temporarily to indicate success
+            const originalText = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-check mr-1"></i>Copied!';
+            button.classList.remove('bg-primary-600', 'hover:bg-primary-700');
+            button.classList.add('bg-green-600', 'hover:bg-green-700');
+            
+            setTimeout(() => {
+                button.innerHTML = originalText;
+                button.classList.remove('bg-green-600', 'hover:bg-green-700');
+                button.classList.add('bg-primary-600', 'hover:bg-primary-700');
+            }, 2000);
+        } catch (err) {
+            console.error('Failed to copy text: ', err);
+        }
+        
+        document.body.removeChild(textArea);
     }
     
     /**
