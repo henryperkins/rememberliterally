@@ -1,3 +1,45 @@
+// Add CSS for code blocks
+const codeBlockStyles = document.createElement('style');
+codeBlockStyles.textContent = `
+    .code-block {
+        margin: 1rem 0;
+        border-radius: 0.375rem;
+        overflow: hidden;
+    }
+    .code-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        font-family: monospace;
+    }
+    .code-block pre {
+        margin: 0;
+        padding: 1rem;
+        overflow-x: auto;
+        font-family: monospace;
+        font-size: 0.875rem;
+        line-height: 1.5;
+    }
+    .code-block code {
+        font-family: monospace;
+    }
+    .copy-code-btn {
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .copy-code-btn:hover {
+        opacity: 0.9;
+    }
+    .message-content code {
+        font-family: monospace;
+        background-color: rgba(0, 0, 0, 0.1);
+        padding: 0.125rem 0.25rem;
+        border-radius: 0.25rem;
+    }
+`;
+document.head.appendChild(codeBlockStyles);
+
 document.addEventListener('DOMContentLoaded', function() {
     // DOM elements
     const welcomeModal = document.getElementById('welcomeModal');
@@ -293,6 +335,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         document.body.removeChild(textArea);
     }
+    
+    // Make copyToClipboard available globally
+    window.copyToClipboard = copyToClipboard;
     
     /**
      * Show typing indicator while waiting for AI response
