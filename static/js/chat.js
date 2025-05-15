@@ -104,6 +104,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const toggleAdvancedOptionsBtn = document.getElementById('toggleAdvancedOptions');
     const advancedOptionsPanel = document.getElementById('advancedOptionsPanel');
     const advancedOptionsIcon = document.getElementById('advancedOptionsIcon');
+    const modelSelect = document.getElementById('modelSelect');
     const reasoningEffortRadios = document.getElementsByName('reasoningEffort');
     const developerMessageInput = document.getElementById('developerMessageInput');
     
@@ -113,6 +114,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let isWaitingForResponse = false;
     let imageData = null; // For storing base64 encoded image data
     let showAdvancedOptions = false; // Track if advanced options panel is visible
+    let availableModels = []; // Store available model deployments
     
     // Theme preference
     const prefersDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -140,10 +142,64 @@ document.addEventListener('DOMContentLoaded', function() {
     toggleAdvancedOptionsBtn.addEventListener('click', toggleAdvancedOptions);
     
     /**
+     * Fetch available models from the API
+     */
+    function fetchAvailableModels() {
+        fetch('/api/models')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    availableModels = data.models;
+                    
+                    // Clear existing options
+                    modelSelect.innerHTML = '';
+                    
+                    // Add options to the select element
+                    availableModels.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model.id;
+                        option.textContent = model.name;
+                        option.title = model.description; // Add description as a tooltip
+                        modelSelect.appendChild(option);
+                    });
+                    
+                    // Set default selected model from localStorage or first available
+                    const savedModel = localStorage.getItem('selectedModel');
+                    if (savedModel && availableModels.some(m => m.id === savedModel)) {
+                        modelSelect.value = savedModel;
+                    } else if (availableModels.length > 0) {
+                        modelSelect.value = availableModels[0].id;
+                        localStorage.setItem('selectedModel', availableModels[0].id);
+                    }
+                } else {
+                    console.error('Error fetching models:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Network error when fetching models:', error);
+            });
+    }
+    
+    /**
+     * Get the selected model ID
+     */
+    function getSelectedModel() {
+        return modelSelect.value;
+    }
+    
+    /**
      * Initialize the UI based on whether the user has a username
      */
     function initializeUI() {
         const userId = localStorage.getItem('user_id');
+        
+        // Fetch available models regardless of login status
+        fetchAvailableModels();
+        
+        // Set up model selection change handler
+        modelSelect.addEventListener('change', function() {
+            localStorage.setItem('selectedModel', this.value);
+        });
         
         if (username && userId) {
             // User has a username and ID, show chat interface
@@ -223,6 +279,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Get advanced options values
         const reasoningEffort = getSelectedReasoningEffort();
         const developerMessage = developerMessageInput.value.trim();
+        const selectedModel = getSelectedModel();
         
         if (message || hasImage) {
             // Add user message to UI (with image if present)
@@ -242,7 +299,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Get AI response with streaming option
             const useStreaming = true; // Enable streaming for better UX
-            getAIResponse(message, imageData, useStreaming, reasoningEffort, developerMessage);
+            getAIResponse(message, imageData, useStreaming, reasoningEffort, developerMessage, selectedModel);
         }
     }
     
@@ -622,8 +679,9 @@ document.addEventListener('DOMContentLoaded', function() {
      * @param {boolean} useStreaming - Whether to use streaming for the response
      * @param {string|null} reasoningEffort - Optional reasoning effort level (low, medium, high)
      * @param {string|null} developerMessage - Optional developer message (like system message)
+     * @param {string|null} model - Optional model deployment ID to use
      */
-    function getAIResponse(message, imageData = null, useStreaming = false, reasoningEffort = null, developerMessage = null) {
+    function getAIResponse(message, imageData = null, useStreaming = false, reasoningEffort = null, developerMessage = null, model = null) {
         const userId = localStorage.getItem('user_id');
         
         // Hide any existing typing indicators
@@ -657,7 +715,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     conversation_history: conversation,
                     streaming: true,
                     reasoning_effort: reasoningEffort,
-                    developer_message: developerMessage
+                    developer_message: developerMessage,
+                    model: model
                 }),
             }).catch(error => {
                 eventSource.close();
