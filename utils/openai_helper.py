@@ -12,16 +12,18 @@ AZURE_OPENAI_ENDPOINT = os.environ.get("AZURE_OPENAI_ENDPOINT")
 AZURE_OPENAI_API_VERSION = os.environ.get("AZURE_OPENAI_API_VERSION", "2025-03-01-preview")
 AZURE_OPENAI_DEPLOYMENT_NAME = os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o")
 
-# O3 and O4 models that support reasoning summary
-MODELS_WITH_REASONING_SUMMARY = ["o3", "o4-mini"]
+# Models that support reasoning summary capability
+MODELS_WITH_REASONING_SUMMARY = ["o3", "o3-mini", "gpt-4.1", "gpt-4.1-mini"]
 
-# Available deployment models - this would typically come from an API,
+# Available Azure OpenAI deployment models - this would typically come from an API,
 # but we're hardcoding for demonstration. In production, you'd fetch from Azure.
 AVAILABLE_MODELS = [
-    {"id": "gpt-4o", "name": "GPT-4o", "description": "Latest and most capable model with vision support"},
-    {"id": "gpt-4o-mini", "name": "GPT-4o-mini", "description": "Faster and more cost-effective version with reasoning"},
-    {"id": "gpt-35-turbo", "name": "GPT-3.5 Turbo", "description": "Fast and efficient for simpler tasks"},
-    {"id": "gpt-4", "name": "GPT-4", "description": "Strong reasoning capabilities"}
+    {"id": "gpt-4o", "name": "Azure GPT-4o", "description": "Latest and most capable Azure OpenAI model with vision support"},
+    {"id": "gpt-4.1", "name": "Azure GPT-4.1", "description": "Azure OpenAI model with advanced capabilities and strong reasoning"},
+    {"id": "gpt-4.1-mini", "name": "Azure GPT-4.1-mini", "description": "More efficient version of Azure GPT-4.1"},
+    {"id": "o3", "name": "Azure O3", "description": "Azure OpenAI model with advanced reasoning and generation capabilities"},
+    {"id": "o3-mini", "name": "Azure O3-mini", "description": "More efficient version of Azure O3"},
+    {"id": "o1", "name": "Azure O1", "description": "Fast and efficient Azure OpenAI model for simpler tasks"}
 ]
 
 def get_available_models():
