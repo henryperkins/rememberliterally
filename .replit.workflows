@@ -1,0 +1,2 @@
+[flask]
+command = "./run.sh"

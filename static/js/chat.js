@@ -700,10 +700,11 @@ document.addEventListener('DOMContentLoaded', function() {
             // Add an empty assistant message with streaming indicator
             addMessageToUI('assistant', '', null, true);
             
-            // Create new EventSource connection
-            const eventSource = new EventSource(`/api/chat?user_id=${userId}`);
+            // Instead of passing everything in the URL, let's create a dedicated streaming endpoint
+            const eventSource = new EventSource(`/api/chat/stream?user_id=${userId || ''}`);
             
-            // Create fetch request to start streaming
+            // For streaming, we still need to post the message data to the server
+            // Let's keep the original approach for actually sending the message
             fetch('/api/chat', {
                 method: 'POST',
                 headers: {
@@ -711,8 +712,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: JSON.stringify({
                     message: message,
-                    username: username,
-                    user_id: userId,
+                    username: username || '',
+                    user_id: userId || '',
                     image_data: imageData,
                     conversation_history: conversation,
                     streaming: true,
@@ -721,12 +722,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     model: model
                 }),
             }).catch(error => {
+                console.error('Error sending streaming message:', error);
                 eventSource.close();
                 hideTypingIndicator();
                 showError('Error starting streaming response: ' + error.message);
-                console.error('Streaming error:', error);
                 isWaitingForResponse = false;
             });
+            
+            // Handle connection open
+            eventSource.onopen = function() {
+                console.log('EventSource connection established');
+            };
             
             let fullResponse = '';
             let streamingMessageElement = document.getElementById('streaming-message');
@@ -773,12 +779,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             };
             
-            // Handle errors
+            // Handle errors with more detailed messaging and retry logic
             eventSource.onerror = function(error) {
                 console.error('EventSource error:', error);
+                
+                // Always close the connection on error
                 eventSource.close();
                 hideTypingIndicator();
-                showError('Connection error: Streaming response failed');
+                
+                // Check if Azure OpenAI credentials are missing
+                if (error && error.target && error.target.readyState === EventSource.CLOSED) {
+                    showError('Connection closed: The server could not process your request. This may be due to missing or invalid API credentials.');
+                } else {
+                    showError('Connection error: Unable to stream the response. Switching to non-streaming mode...');
+                    
+                    // Fall back to non-streaming mode after a short delay
+                    setTimeout(() => {
+                        if (isWaitingForResponse) {
+                            getAIResponse(message, imageData, false, reasoningEffort, developerMessage, model);
+                        }
+                    }, 1000);
+                }
+                
                 isWaitingForResponse = false;
             };
         } else {
