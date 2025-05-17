@@ -8,4 +8,4 @@ npx tailwindcss -i ./static/css/tailwind-input.css -o ./static/css/styles.css --
 
 # Step 2: Start the Gunicorn server
 echo "Starting Gunicorn server..."
-exec gunicorn --bind 0.0.0.0:5000 --reuse-port main:app
+gunicorn --bind 0.0.0.0:5000 --reuse-port app:app
