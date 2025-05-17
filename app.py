@@ -131,6 +131,41 @@ def register_user():
             'message': f"An error occurred: {str(e)}"
         }), 500
 
+@app.route('/api/chat/stream', methods=['GET'])
+def chat_stream():
+    """Stream AI responses using server-sent events."""
+    try:
+        from flask import Response
+        import json
+        
+        # Get essential parameters
+        user_id = request.args.get('user_id')
+        
+        def generate():
+            # Start with an initial event to keep the connection alive
+            yield f"data: {json.dumps({'status': 'connected'})}\n\n"
+            
+            # For now, just keep the connection open but don't stream anything
+            # The actual streaming will happen via the regular POST endpoint
+            # This is just to maintain the connection
+            
+            # Close the connection after a timeout
+            yield f"data: {json.dumps({'status': 'timeout', 'message': 'Stream connection timed out'})}\n\n"
+            
+        # Return a streaming response with proper headers
+        response = Response(generate(), mimetype='text/event-stream')
+        response.headers['Cache-Control'] = 'no-cache'
+        response.headers['X-Accel-Buffering'] = 'no'
+        response.headers['Connection'] = 'keep-alive'
+        return response
+        
+    except Exception as e:
+        logging.error(f"Error in chat stream endpoint: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': f"An error occurred: {str(e)}"
+        }), 500
+
 @app.route('/api/chat', methods=['POST'])
 def chat():
     """Process chat messages and get AI responses."""
@@ -138,7 +173,9 @@ def chat():
         from utils.openai_helper import generate_ai_response, stream_ai_response
         from flask import Response
         
+        # In the new implementation we only handle POST requests
         data = request.json
+        
         message_content = data.get('message', '')
         conversation_history = data.get('conversation_history', [])
         image_data = data.get('image_data')  # Base64 encoded image data
@@ -247,7 +284,8 @@ def chat():
                         ai_message.content = full_response
                         db.session.commit()
                     
-                    # Send the chunk to the client
+                    # Send the chunk to the client with proper formatting
+                    # Each SSE message needs to start with 'data: ' and end with two newlines
                     yield f"data: {json.dumps({'chunk': chunk, 'is_final': False})}\n\n"
                 
                 # Finalize the message in the database if available
@@ -272,7 +310,11 @@ def chat():
                     
                 yield f"data: {json.dumps(response_data)}\n\n"
             
-            return Response(generate(), mimetype='text/event-stream')
+            response = Response(generate(), mimetype='text/event-stream')
+            response.headers['Cache-Control'] = 'no-cache'
+            response.headers['X-Accel-Buffering'] = 'no'  # For Nginx
+            response.headers['Connection'] = 'keep-alive'
+            return response
         else:
             # Generate regular AI response
             ai_response, reasoning_summary = generate_ai_response(
